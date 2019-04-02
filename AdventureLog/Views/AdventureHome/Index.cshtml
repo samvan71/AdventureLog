@@ -1,0 +1,55 @@
+﻿@model AdventureLog.Models.AdventureHomeModel
+@using Microsoft.AspNet.Identity
+@{
+    ViewBag.Title = "Recent Adventures";
+    ViewBag.MessageTitle = "From the AdventureLog Team:";
+}
+<div class="row">
+    <div class="col-8">
+        <div class="jumbotron mb-1">
+            <h1>@ViewBag.Title</h1>
+        </div>
+        <div class="btn-group mb-1" role="group">
+            @Html.ActionLink("Create Game", "Create", null, new { @class = "btn btn-primary" })
+        </div>
+        <div class="row ml-0 mb-0 mr-0">
+            @foreach (var adventure in Model.Adventures)
+            {
+                <div class="col-6 pl-1 pr-1 pb-2">
+                    <div class="card border-dark">
+                        <div class="card-header">
+                            <h2 class="float-left">@adventure.Name</h2>
+                            @Html.ActionLink("Join Game", "Details", new { id = adventure.Adventure_PK }, new { @class = "btn btn-primary float-right" })
+                        </div>
+                        <div class="card-body text-dark">
+                            <div class="card-title">
+                                System: @adventure.SystemName
+                            </div>
+                            <hr class="col-xs-12">
+                            <div class="card-text text-dark">
+                                Summary: <br>
+                                @adventure.ShortDescription
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="card">
+            <h2 class="card-header">@ViewBag.MessageTitle</h2>
+            @foreach (var message in Model.Messages)
+            {
+                <div class="card card-body">
+                    <div class="card-header">
+                        @message.Key
+                    </div>
+                    <div class="card-body">
+                        @message.Value
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

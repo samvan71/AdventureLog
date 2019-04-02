@@ -1,0 +1,48 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewBag.Title - My ASP.NET Application</title>
+
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/modernizr")
+    @Scripts.Render("~/bundles/bootstrap")
+    <script src="https://cdn.ckeditor.com/4.11.3/standard/ckeditor.js"></script>
+</head>
+<body>
+    <div class="navbar navbar-dark bg-primary sticky-top">
+        <div class="container">
+            <div class="navbar-header">
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggleExternalContent" aria-controls="navbarToggleExternalContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+            @if (Request.IsAuthenticated)
+            {
+                @Html.RouteLink("Adventure Log", "adventurehome", null, new { @class = "navbar-brand" })
+            }
+            else
+            {
+                @Html.ActionLink("Adventure Log", "Index", "Home", new { area = "" }, new { @class = "navbar-brand" })
+            }
+            <div class="collapse navbar-collapse" id="navbarToggleExternalContent">
+                <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
+                    <li>@Html.ActionLink("About", "About", "Home", new { @class = "nav-link" })</li>
+                    <li>@Html.ActionLink("Contact", "Contact", "Home", new { @class = "nav-link" })</li>
+                    <li>@Html.Partial("_LoginPartial")</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="container body-content p-2">
+        @RenderBody()
+        <hr />
+        <footer>
+            <p>&copy; @DateTime.Now.Year - My ASP.NET Application</p>
+        </footer>
+    </div>
+    @RenderSection("scripts", required: false)
+    @Styles.Render("~/Content/Site")
+</body>
+</html>

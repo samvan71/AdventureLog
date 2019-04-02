@@ -1,0 +1,58 @@
+﻿@model AdventureLog.Models.Item
+@using AdventureLog.Controllers
+@{
+    ViewBag.Title = "Item Details";
+}
+
+<h2>@Model.Name</h2>
+
+<div>
+    <h6>Last edited by: @Model.LastModifiedUser on @Model.LastModifiedDate</h6>
+    <hr />
+    <nav>
+        <div class="nav nav-tabs" id="nav-tab" role="tablist">
+            <a class="nav-item nav-link active"
+               id="nav-Summary-tab"
+               data-toggle="tab"
+               href="#nav-summary"
+               role="tab"
+               aria-controls="nav-home"
+               ar
+               Eternal life, endles torture.
+               ia-selected="true">Details</a>
+            <a class="nav-item nav-link"
+               id="nav-comments-tab"
+               data-toggle="tab"
+               href="#nav-comments"
+               role="tab"
+               aria-controls="nav-home"
+               aria-selected="true">Comments</a>
+        </div>
+    </nav>
+    <div class="tab-content" id="nav-tabContent">
+        <div class="tab-pane fade show active p-3" id="nav-summary" role="tabpanel" aria-labelledby="nav-home-tab">
+            <dl class="dl-horizontal">
+                <dt>
+                    @Html.DisplayNameFor(model => model.Description)
+                </dt>
+
+                <dd>
+                    @Html.Raw(Model.Description)
+                </dd>
+
+                @if (AdventureHomeController.IsGamemaster(User.Identity, Model.Area.World.Adventure_PK))
+                {
+                    @Html.ActionLink("Edit", "ItemEdit", new { id = Model.Item_PK }, new { @class = "btn btn-primary" })
+                }
+
+            </dl>
+        </div>
+        <div class="tab-pane fade p-3" id="nav-comments" role="tabpanel" aria-labelledby="nav-contact-tab">
+            Comments
+        </div>
+    </div>
+    <hr />
+</div>
+<p>
+    @Html.ActionLink("Back to Area", "AreaDetails", new { id = Model.Area_PK }, new { @class = "btn btn-secondary" })
+</p>

@@ -1,0 +1,178 @@
+﻿@model AdventureLog.Models.Area
+@using AdventureLog.Controllers
+@{
+    ViewBag.Title = "Area Details";
+}
+
+<h2>@Model.Name</h2>
+
+<div>
+    <h6>Last edited by: @Model.LastModifiedUser on @Model.LastModifiedDate</h6>
+    <hr />
+    <nav>
+        <div class="nav nav-tabs" id="nav-tab" role="tablist">
+            <a class="nav-item nav-link active"
+               id="nav-Summary-tab"
+               data-toggle="tab"
+               href="#nav-summary"
+               role="tab"
+               aria-controls="nav-home"
+               aria-selected="true">Details</a>
+            <a class="nav-item nav-link"
+               id="nav-items-tab"
+               data-toggle="tab"
+               href="#nav-items"
+               role="tab"
+               aria-controls="nav-home"
+               aria-selected="true">Items</a>
+            <a class="nav-item nav-link"
+               id="nav-comments-tab"
+               data-toggle="tab"
+               href="#nav-comments"
+               role="tab"
+               aria-controls="nav-home"
+               aria-selected="true">Comments</a>
+        </div>
+    </nav>
+    <div class="tab-content" id="nav-tabContent">
+        <div class="tab-pane fade show active p-3" id="nav-summary" role="tabpanel" aria-labelledby="nav-home-tab">
+            <dl class="dl-horizontal">
+                <dt>
+                    @Html.DisplayNameFor(model => model.Description)
+                </dt>
+
+                <dd>
+                    @Html.Raw(Model.Description)
+                </dd>
+
+                @if (AdventureHomeController.IsGamemaster(User.Identity, Model.World.Adventure_PK))
+                {
+                    @Html.ActionLink("Edit", "AreaEdit", new { id = Model.Area_PK }, new { @class = "btn btn-primary" })
+                }
+
+            </dl>
+        </div>
+        <div class="tab-pane fade p-3" id="nav-items" role="tabpanel" aria-labelledby="nav-profile-tab">
+            <div class="row p-3">
+                <div class="nav flex-column nav-pills col-2" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                    @{
+                        bool first = true;
+                        foreach (var item in Model.Items)
+                        {
+                            if (first)
+                            {
+                                <a class="nav-link active"
+                                   id="v-pills-tab-@item.Item_PK"
+                                   data-toggle="pill"
+                                   href="#v-pills-item-@item.Item_PK"
+                                   role="tab"
+                                   aria-controls="v-pills-item"
+                                   aria-selected="true">@item.Name</a>
+                            }
+                            else
+                            {
+                                <a class="nav-link"
+                                   id="v-pills-tab-@item.Item_PK"
+                                   data-toggle="pill"
+                                   href="#v-pills-item-@item.Item_PK"
+                                   role="tab"
+                                   aria-controls="v-pills-item"
+                                   aria-selected="true">@item.Name</a>
+                            }
+
+                            first = false;
+                        }
+                    }
+                </div>
+                <div class="tab-content col-10" id="v-pills-tabContent">
+                    @{
+                        first = true;
+                        foreach (var item in Model.Items)
+                        {
+                            if (first)
+                            {
+                                <div class="tab-pane fade show active"
+                                     id="v-pills-item-@item.Item_PK"
+                                     role="tabpanel"
+                                     aria-labelledby="v-pills-tab-@item.Item_PK">
+                                    <div class="card border-dark">
+                                        <div class="card-header">
+                                            <h2 class="float-left">@item.Name</h2>
+                                            @Html.ActionLink("See More",
+                                                             "ItemDetails",
+                                                             new { id = item.Item_PK },
+                                                             new { @class = "btn btn-primary float-right" })
+                                        </div>
+                                        <div class="card-body text-dark">
+                                            <div class="card-text text-dark">
+                                                Summary: <br>
+                                                @item.ShortDescription
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+
+                                <div class="tab-pane fade show"
+                                     id="v-pills-item-@item.Item_PK"
+                                     role="tabpanel"
+                                     aria-labelledby="v-pills-tab-@item.Item_PK">
+                                    <div class="card border-dark">
+                                        <div class="card-header">
+                                            <h2 class="float-left">@item.Name</h2>
+                                            @Html.ActionLink("See More",
+                                                             "ItemDetails",
+                                                             new { id = item.Item_PK },
+                                                             new { @class = "btn btn-primary float-right" })
+                                        </div>
+                                        <div class="card-body text-dark">
+                                            <div class="card-text text-dark">
+                                                Summary: <br>
+                                                @item.ShortDescription
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            first = false;
+                        }
+                    }
+                </div>
+            </div>
+
+
+
+
+            @*@foreach (var item in Model.Items)
+        {
+            <div class="pl-1 pr-1 pb-2">
+                <div class="card border-dark">
+                    <div class="card-header">
+                        <h2 class="float-left">@item.Name</h2>
+                        @Html.ActionLink("See More", "ItemDetails", new { id = item.Item_PK }, new { @class = "btn btn-primary float-right" })
+                    </div>
+                    <div class="card-body text-dark">
+                        <div class="card-text text-dark">
+                            Summary: <br>
+                            @item.ShortDescription
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }*@
+
+            @Html.ActionLink("Create New Item", "ItemCreate", new { AreaId = Model.Area_PK }, new { @class = "btn btn-primary" })
+        </div>
+        <div class="tab-pane fade p-3" id="nav-comments" role="tabpanel" aria-labelledby="nav-contact-tab">
+            Comments
+        </div>
+
+    </div>
+    <hr />
+</div>
+<p>
+    @Html.ActionLink("Back to World", "WorldDetails", new { id = Model.World_PK }, new { @class = "btn btn-secondary" })
+</p>

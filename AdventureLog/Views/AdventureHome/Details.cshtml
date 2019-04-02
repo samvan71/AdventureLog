@@ -1,0 +1,214 @@
+﻿@model AdventureLog.Models.Adventure
+@using AdventureLog.Controllers;
+@{
+    ViewBag.Title = "Adventure Details" ;
+}
+
+<h2>@Model.Name</h2>
+
+<div>
+    <h6>Last edited by: @Model.LastModifiedUser on @Model.LastModifiedDate</h6>
+    <hr />
+    <nav>
+        <div class="nav nav-tabs" id="nav-tab" role="tablist">
+            <a class="nav-item nav-link active"
+               id="nav-Summary-tab"
+               data-toggle="tab"
+               href="#nav-summary"
+               role="tab"
+               aria-controls="nav-home"
+               aria-selected="true">Details</a>
+            <a class="nav-item nav-link"
+               id="nav-worlds-tab"
+               data-toggle="tab"
+               href="#nav-worlds"
+               role="tab"
+               aria-controls="nav-home"
+               aria-selected="true">Worlds</a>
+            <a class="nav-item nav-link"
+               id="nav-comments-tab"
+               data-toggle="tab"
+               href="#nav-comments"
+               role="tab"
+               aria-controls="nav-home"
+               aria-selected="true">Comments</a>
+        </div>
+    </nav>
+    <div class="tab-content" id="nav-tabContent">
+        <div class="tab-pane fade show active p-3" id="nav-summary" role="tabpanel" aria-labelledby="nav-home-tab">
+            <!--Summary-->
+            <dl class="dl-horizontal">
+                <dt>
+                    @Html.LabelFor(model => model.SystemName):
+                </dt>
+
+                <dd>
+                    @Html.DisplayFor(model => model.SystemName)
+                </dd>
+
+                <dt>
+                    @Html.DisplayNameFor(model => model.Description):
+                </dt>
+
+                <dd>
+                    @Html.Raw(Model.Description)
+                </dd>
+
+            </dl>
+            @if (AdventureHomeController.IsGamemaster(User.Identity, Model.Adventure_PK))
+            {
+                @Html.ActionLink("Edit", "Edit", new { id = Model.Adventure_PK }, new { @class = "btn btn-primary" })
+            }
+        </div>
+        <div class="tab-pane fade p-3" id="nav-worlds" role="tabpanel" aria-labelledby="nav-profile-tab">
+            <!--World List-->
+            <div class="row p-3">
+                <div class="nav flex-column nav-pills col-2" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                    @{
+                        bool first = true;
+                        foreach (var world in Model.Worlds)
+                        {
+                            if (first)
+                            {
+                                <a class="nav-link active"
+                                   id="v-pills-tab-@world.World_PK"
+                                   data-toggle="pill"
+                                   href="#v-pills-item-@world.World_PK"
+                                   role="tab"
+                                   aria-controls="v-pills-item"
+                                   aria-selected="true">@world.Name</a>
+                            }
+                            else
+                            {
+                                <a class="nav-link"
+                                   id="v-pills-tab-@world.World_PK"
+                                   data-toggle="pill"
+                                   href="#v-pills-item-@world.World_PK"
+                                   role="tab"
+                                   aria-controls="v-pills-item"
+                                   aria-selected="true">@world.Name</a>
+                            }
+
+                            first = false;
+                        }
+                    }
+                </div>
+                <div class="tab-content col-10" id="v-pills-tabContent">
+                    @{
+                        first = true;
+                        foreach (var world in Model.Worlds)
+                        {
+                            if (first)
+                            {
+                                <div class="tab-pane fade show active"
+                                     id="v-pills-item-@world.World_PK"
+                                     role="tabpanel"
+                                     aria-labelledby="v-pills-tab-@world.World_PK">
+                                    <div class="card border-dark">
+                                        <div class="card-header">
+                                            <h2 class="float-left">@world.Name</h2>
+                                            @Html.ActionLink("See More", "WorldDetails", new { id = world.World_PK }, new { @class = "btn btn-primary float-right" })
+                                        </div>
+                                        <div class="card-body text-dark">
+                                            <div class="card-text text-dark">
+                                                Summary: <br>
+                                                @world.ShortDescription
+                                            </div>
+                                        </div>
+                                        <div class="list-group-flush">
+                                            @foreach (var area in world.Areas)
+                                            {
+
+                                                <a href="@Url.Action("AreaDetails", new { id = area.Area_PK})" class="list-group-item list-group-item-action">
+                                                    <h6>@area.Name: </h6>
+                                                    <small>
+                                                        @area.ShortDescription
+                                                    </small>
+                                                </a>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="tab-pane fade show"
+                                     id="v-pills-item-@world.World_PK"
+                                     role="tabpanel"
+                                     aria-labelledby="v-pills-tab-@world.World_PK">
+                                    <div class="card border-dark">
+                                        <div class="card-header">
+                                            <h2 class="float-left">@world.Name</h2>
+                                            @Html.ActionLink("See More", "WorldDetails", new { id = world.World_PK }, new { @class = "btn btn-primary float-right" })
+                                        </div>
+                                        <div class="card-body text-dark">
+                                            <div class="card-text text-dark">
+                                                Summary: <br>
+                                                @world.ShortDescription
+                                            </div>
+                                        </div>
+                                        <div class="list-group-flush">
+                                            @foreach (var area in world.Areas)
+                                            {
+
+                                                <a href="@Url.Action("AreaDetails", new { id = area.Area_PK})" class="list-group-item list-group-item-action">
+                                                    <h6>@area.Name: </h6>
+                                                    <small>
+                                                        @area.ShortDescription
+                                                    </small>
+                                                </a>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            first = false;
+                        }
+                    }
+                </div>
+            </div>
+            
+            @Html.ActionLink("Create New World", "WorldCreate", new { adventureId = Model.Adventure_PK }, new { @class = "btn btn-primary" })
+        </div>
+        <div class="tab-pane fade p-3" id="nav-comments" role="tabpanel" aria-labelledby="nav-contact-tab">
+            <!--Comments-->
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p>
+                                <p><a class="float-left" href="https://maniruzzaman-akash.blogspot.com/p/contact.html"><strong>Maniruzzaman Akash</strong></a></p>
+                                <small>15 Minutes Ago</small>
+                                <span class="float-right"><i class="text-warning fa fa-star"></i></span>
+                                <span class="float-right"><i class="text-warning fa fa-star"></i></span>
+                                <span class="float-right"><i class="text-warning fa fa-star"></i></span>
+                                <span class="float-right"><i class="text-warning fa fa-star"></i></span>
+                            </p>
+                            <div class="clearfix"></div>
+                            <p>Lorem Ipsum is simply dummy text of the pr make  but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.</p>
+                            <p>
+                                <a class="float-right btn btn-outline-primary ml-2"> <i class="fa fa-reply"></i> Reply</a>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="card card-inner">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <p><a href="https://maniruzzaman-akash.blogspot.com/p/contact.html"><strong>Maniruzzaman Akash</strong></a></p>
+                                    <small>15 Minutes Ago</small>
+                                    <p>Lorem Ipsum is simply dummy text of the pr make  but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr />
+</div>
+<p>
+    @Html.RouteLink("Back to Adventure List", "adventurehome", null, new { @class = "btn btn-secondary" })
+</p>
