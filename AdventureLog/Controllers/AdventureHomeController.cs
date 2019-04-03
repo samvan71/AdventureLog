@@ -139,6 +139,8 @@ namespace AdventureLog.Controllers
                              select a)
                              // Include worlds and areas as they are displayed in cards.
                              .Include(a => a.Worlds.Select(w => w.Areas))
+                             .Include(a => a.AdventureNotes.Select(n => n.ApplicationUser))
+                             .Include(a => a.AdventureNotes.Select(n => n.ChildNotes))
                              .FirstOrDefault();
             }
 
@@ -304,6 +306,37 @@ namespace AdventureLog.Controllers
             return result;
         }
 
+        #endregion
+
+        #region Comments
+        [Authorize, HttpPost, ValidateInput(false)]
+        public ActionResult CreateComment(long Adventure_PK, string newComment, long? parentComment = null)
+        {
+            ActionResult result = RedirectToAction("Details", new { id = Adventure_PK });
+
+            if (!string.IsNullOrWhiteSpace(newComment))
+            {
+                var note = new AdventureNote()
+                {
+                    Adventure_PK = Adventure_PK,
+                    UserId_PK = User.Identity.GetUserId(),
+                    ParentAdventureNote_PK = parentComment,
+                    Text = newComment,
+                    IsActive = true,
+                    CreatedDate = DateTime.Now,
+                    LastModifiedDate = DateTime.Now,
+                    LastModifiedUser = User.Identity.GetUserName()
+                };
+
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    dbContext.AdventureNotes.Add(note);
+                    dbContext.SaveChanges();
+                }
+            }
+
+            return result;
+        }
         #endregion
 
         #endregion

@@ -26,7 +26,8 @@ namespace AdventureLog
             bundles.Add(new StyleBundle("~/Content/site").Include(
                       "~/Content/bootstrap.css",
                       "~/Content/Site.css",
-                      "~/Content/summernote-bs4.css"));
+                      "~/Content/summernote-bs4.css",
+                      "~/Content/font-awesome.css"));
 
         }
     }

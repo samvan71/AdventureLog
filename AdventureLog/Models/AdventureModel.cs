@@ -45,6 +45,9 @@ namespace AdventureLog.Models
 
         [InverseProperty("Adventure")]
         public virtual ICollection<World> Worlds { get; set; }
+
+        [InverseProperty("Adventure")]
+        public virtual ICollection<AdventureNote> AdventureNotes { get; set; }
     }
 
     #region Player
@@ -322,7 +325,6 @@ namespace AdventureLog.Models
         public ApplicationUser ApplicationUser { get; set; }
     }
 
-
     public class AreaNote
     {
         [Key]
@@ -389,6 +391,48 @@ namespace AdventureLog.Models
 
         [ForeignKey("UserId_PK")]
         public ApplicationUser ApplicationUser { get; set; }
+    }
+
+    public class AdventureNote
+    {
+        [Key]
+        public long AdventureNote_PK { get; set; }
+
+        [Required]
+        public long Adventure_PK { get; set; }
+
+        [Required]
+        public string UserId_PK { get; set; }
+
+        public long? ParentAdventureNote_PK { get; set; }
+
+        [Required]
+        [AllowHtml]
+        public string Text { get; set; }
+
+        [Required]
+        public bool IsActive { get; set; }
+
+        [Required]
+        public DateTime CreatedDate { get; set; }
+
+        [Required]
+        public DateTime LastModifiedDate { get; set; }
+
+        [Required]
+        public string LastModifiedUser { get; set; }
+
+        [ForeignKey("Adventure_PK")]
+        public Adventure Adventure { get; set; }
+
+        [ForeignKey("UserId_PK")]
+        public ApplicationUser ApplicationUser { get; set; }
+
+        [ForeignKey("ParentAdventureNote_PK")]
+        public AdventureNote ParentAdventureNote {get;set;}
+
+        [InverseProperty("ParentAdventureNote")]
+        public virtual ICollection<AdventureNote> ChildNotes { get; set; }
     }
     #endregion
 

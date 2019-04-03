@@ -20,6 +20,7 @@ namespace AdventureLog.Models
         public DbSet<ItemNote> ItemNotes { get; set; }
         public DbSet<AreaNote> AreaNotes { get; set; }
         public DbSet<WorldNote> WorldNotes { get; set; }
+        public DbSet<AdventureNote> AdventureNotes { get; set; }
 
         public ApplicationDbContext()
             : base("DefaultConnection", throwIfV1Schema: false)

@@ -11,6 +11,13 @@
   font-weight: normal;
   font-style: normal;
 }
+[data-toggle="collapse"] .fa:before {
+    content: "\f139";
+}
+
+[data-toggle="collapse"].collapsed .fa:before {
+    content: "\f13a";
+}
 .fa {
   display: inline-block;
   font: normal normal normal 14px/1 FontAwesome;
