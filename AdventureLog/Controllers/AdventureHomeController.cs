@@ -12,6 +12,7 @@ using AdventureLog.Models;
 using System.Data.Entity;
 using System.Collections.Generic;
 using System.Security.Principal;
+using System.Text.RegularExpressions;
 
 namespace AdventureLog.Controllers
 {
@@ -133,8 +134,9 @@ namespace AdventureLog.Controllers
                 string userId = User.Identity.GetUserId();
 
                 adventure = (from a in dbContext.Adventures
+                             let player = a.Players.FirstOrDefault(p => p.UserId_PK == userId)
                              where a.Adventure_PK == id
-                                && a.Players.Where(p => p.UserId_PK == userId).FirstOrDefault().IsActive
+                                && ( a.IsPublic || player.IsActive)
                                 && a.IsActive
                              select a)
                              // Include Items and areas as they are displayed in cards.
@@ -173,10 +175,10 @@ namespace AdventureLog.Controllers
                 string userId = User.Identity.GetUserId();
 
                 adventure = (from a in dbContext.Adventures
+                             let player = a.Players.FirstOrDefault(p => p.UserId_PK == userId)
                              where a.Adventure_PK == id
-                                && a.Players.Any(p => p.UserId_PK == userId)
-                                && (a.Players.FirstOrDefault(p => p.UserId_PK == userId).PlayerRole.PlayerRole_PK
-                                        == (long)PlayerRole.PlayerRoleKey.Gamemaster)
+                                && player.IsActive
+                                && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
                                 && a.IsActive
                              select a)
                              // Persist Player Role and Application User for displaying.
@@ -245,12 +247,16 @@ namespace AdventureLog.Controllers
             return result;
         }
 
+        #endregion
+
+        #region Invite
+
         // Get: adventure/{id}/Invite/{Invite Password}
         [Authorize]
-        [Route("{id:long}/Invite/{invitePassword?}")]
+        [Route("adventure/{id:long}/Invite/{invitePassword?}")]
         public ActionResult Invite(long id, string invitePassword = "")
         {
-            ActionResult result = View();
+            ActionResult result = View("InviteFailed");
 
             using (var dbContext = new ApplicationDbContext())
             {
@@ -259,17 +265,16 @@ namespace AdventureLog.Controllers
                 // User must be logged in to use Invite Links
                 if (userId != null)
                 {
-                    Adventure adventure = null;
-
                     // Find the adventure
-                    adventure = (from a in dbContext.Adventures
-                                 where a.Adventure_PK == id
-                                    && a.IsActive
-                                 select a).FirstOrDefault();
+                    var adventure = (from a in dbContext.Adventures
+                                     where a.Adventure_PK == id
+                                        && a.IsActive
+                                     select a).FirstOrDefault();
 
                     // If the adventure was found and the password is valid.
                     if (adventure != null
-                            && adventure.InvitePassword == invitePassword)
+                            && (string.IsNullOrWhiteSpace(adventure.InvitePassword) 
+                                    || string.Equals(adventure.InvitePassword, invitePassword)))
                     {
                         var player = adventure.Players.Where(p => p.UserId_PK == userId).FirstOrDefault();
 
@@ -282,25 +287,33 @@ namespace AdventureLog.Controllers
                         }
                         else
                         {
-                            // Add the user as a player.
+                            // Add the user as a new player.
                             var newPlayer = new Player()
                             {
                                 UserId_PK = userId,
                                 Adventure = adventure,
-                                PlayerRole_PK = (int)PlayerRole.PlayerRoleKey.Player,
-                                IsActive = true
+                                PlayerRole_PK = (int)PlayerRole.PlayerRoleKey.Player
                             };
+
+                            // If the adventure is secured, do not whitelist the player.
+                            newPlayer.IsActive = !adventure.IsSecured;
 
                             dbContext.Players.Add(newPlayer);
                         }
 
                         dbContext.SaveChanges();
 
-                        // Redirect to the details page of the newly joined adventure.
-                        result = RedirectToAction("Details", id);
+                        if (!adventure.IsSecured)
+                        {
+                            // Redirect to the details page of the newly joined adventure.
+                            result = RedirectToAction("Details", id);
+                        }
+                        {
+                            // Redirect to the success page.
+                            result = View("InviteSuccess");
+                        }
                     }
                 }
-
             }
 
             return result;
@@ -316,10 +329,12 @@ namespace AdventureLog.Controllers
 
             if (!string.IsNullOrWhiteSpace(newComment))
             {
+                var userId = User.Identity.GetUserId();
+
                 var note = new AdventureNote()
                 {
                     Adventure_PK = Adventure_PK,
-                    UserId_PK = User.Identity.GetUserId(),
+                    UserId_PK = userId,
                     ParentAdventureNote_PK = parentComment,
                     Text = newComment,
                     IsActive = true,
@@ -330,6 +345,14 @@ namespace AdventureLog.Controllers
 
                 using (var dbContext = new ApplicationDbContext())
                 {
+                    // Check if the adventure exists that meets the qualifications.
+                    var isPlayer = (from a in dbContext.Adventures
+                                    let player = a.Players.FirstOrDefault(p => p.UserId_PK == userId)
+                                    where a.Adventure_PK == Adventure_PK
+                                        && a.IsActive
+                                        && player.IsActive
+                                    select a).Any();
+
                     dbContext.AdventureNotes.Add(note);
                     dbContext.SaveChanges();
                 }
@@ -348,9 +371,14 @@ namespace AdventureLog.Controllers
 
             using (var dbContext = new ApplicationDbContext())
             {
+                var userId = User.Identity.GetUserId();
+
                 var adventure = (from a in dbContext.Adventures
+                                 let player = a.Players.FirstOrDefault(p => p.UserId_PK == userId)
                                  where a.Adventure_PK == adventure_PK
                                     && a.IsActive
+                                    && player.IsActive
+                                    && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
                                  select a).FirstOrDefault();
 
                 adventure.IsActive = false;
@@ -373,18 +401,41 @@ namespace AdventureLog.Controllers
 
             using (var dbContext = new ApplicationDbContext())
             {
-                var results = (from i in dbContext.Items
-                               where i.Adventure_PK == adventure_PK
-                                        && i.Name == searchText
-                               select i).AsEnumerable();
+                var userId = User.Identity.GetUserId();
 
-                if (results.Count() > 1)
+                // Check to see if there is an exact match on the name.
+                var results = (from i in dbContext.Items
+                               let player = i.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId)
+                               where i.Adventure_PK == adventure_PK
+                                && i.Name == searchText
+                                && i.IsActive
+                                && (i.Adventure.IsPublic || player.IsActive)
+                               select i)
+                               .ToList();
+
+                if (results.Count() == 1)
                 {
+                    // If there is only one exact match, go to the detail page.
                     result = RedirectToAction("ItemDetails", new { id = results.First().Item_PK });
                 }
                 else
                 {
-                    result = RedirectToAction("SearchResults", new { id = adventure_PK, results = results});
+                    // If there are multiple matches, start the fuzzy search.
+                    // Get all items to search through.
+                    results = (from i in dbContext.Items
+                               where i.Adventure_PK == adventure_PK
+                                && i.IsActive
+                               select i)
+                               .ToList();
+
+                    // Find a match on any names that contain the non-case-sensitive text of the search.
+                    Regex regex = new Regex("^.*" + searchText.ToLower() + ".*$");
+
+                    // Remove all items that do not match.
+                    results = results.Where(i => regex.IsMatch(i.Name.ToLower())).ToList();
+
+                    TempData["searchResults"] = results;
+                    result = RedirectToAction("SearchResults", new { id = adventure_PK });
                 }
             }
 
@@ -393,13 +444,28 @@ namespace AdventureLog.Controllers
 
         [HttpGet]
         [Route("adventure/{id:long}/Search/Results")]
-        public ActionResult SearchResults(long id, IEnumerable<Item> results = null)
+        public ActionResult SearchResults(long id)
         {
-            ActionResult result = null;
+            var searchResults = TempData["searchResults"] as List<Item>;
+            var viewModel = new SearchResultsViewModel(null, searchResults);
 
-            result = View("SearchResults", results);
+            using (var dbContext = new ApplicationDbContext())
+            {
+                var adventure = (from a in dbContext.Adventures
+                                 where a.Adventure_PK == id
+                                    && a.IsActive
+                                 select a)
+                                 // Get the list of items for the search menu.
+                                 .Include(a => a.Items)
+                                 .FirstOrDefault();
 
-            return result;
+                if (adventure != null)
+                {
+                    viewModel.Adventure = adventure;
+                }
+            }
+
+            return View(viewModel);
         }
 
         #endregion
@@ -426,11 +492,11 @@ namespace AdventureLog.Controllers
                 string userId = User.Identity.GetUserId();
 
                 adventure = (from a in dbContext.Adventures
+                             let player = a.Players.FirstOrDefault(p => p.UserId_PK == userId)
                              where a.Adventure_PK == adventureId
-                                && a.Players.Any(p => p.UserId_PK == userId)
                                 && a.IsActive
-                                && (a.Players.FirstOrDefault(p => p.UserId_PK == userId).PlayerRole.PlayerRole_PK
-                                    == (long)PlayerRole.PlayerRoleKey.Gamemaster)
+                                && player.IsActive
+                                && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
                              select a).FirstOrDefault();
             }
 
@@ -502,13 +568,14 @@ namespace AdventureLog.Controllers
             {
                 string userId = User.Identity.GetUserId();
 
-                Item = (from w in dbContext.Items
-                         where w.Item_PK == id
-                            && w.IsActive
+                Item = (from i in dbContext.Items
+                        let player = i.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId)
+                        where i.Item_PK == id
+                            && i.IsActive
                             // Assure that the adventure is one the player can view AND is not deleted.
-                            && w.Adventure.IsActive
-                            && w.Adventure.Players.Any(p => p.UserId_PK == userId)
-                         select w)
+                            && i.Adventure.IsActive
+                            && (i.Adventure.IsPublic || player.IsActive)
+                        select i)
                          .Include(w => w.ItemNotes.Select(n => n.ApplicationUser))
                          .Include(w => w.ItemNotes.Select(n => n.ChildNotes))
                          // Load 2 levels of children
@@ -537,15 +604,15 @@ namespace AdventureLog.Controllers
             {
                 string userId = User.Identity.GetUserId();
 
-                Item = (from w in dbContext.Items
-                             where w.Item_PK == id
-                                // Assure that the adventure is one the player can edit AND is not deleted.
-                                && w.IsActive
-                                && w.Adventure.IsActive
-                                && w.Adventure.Players.Any(p => p.UserId_PK == userId)
-                                && (w.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId).PlayerRole.PlayerRole_PK
-                                        == (long)PlayerRole.PlayerRoleKey.Gamemaster)
-                             select w).FirstOrDefault();
+                Item = (from i in dbContext.Items
+                        let player = i.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId)
+                        where i.Item_PK == id
+                            // Assure that the adventure is one the player can edit AND is not deleted.
+                            && i.IsActive
+                            && i.Adventure.IsActive
+                            && player.IsActive
+                            && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
+                         select i).FirstOrDefault();
             }
 
             if (Item != null)
@@ -586,37 +653,6 @@ namespace AdventureLog.Controllers
         }
         #endregion
 
-        #region Comments
-        [Authorize, HttpPost, ValidateInput(false)]
-        public ActionResult CreateItemComment(long Item_PK, string newComment, long? parentComment = null)
-        {
-            ActionResult result = RedirectToAction("ItemDetails", new { id = Item_PK });
-
-            if (!string.IsNullOrWhiteSpace(newComment))
-            {
-                var note = new ItemNote()
-                {
-                    Item_PK = Item_PK,
-                    UserId_PK = User.Identity.GetUserId(),
-                    ParentItemNote_PK = parentComment,
-                    Text = newComment,
-                    IsActive = true,
-                    CreatedDate = DateTime.Now,
-                    LastModifiedDate = DateTime.Now,
-                    LastModifiedUser = User.Identity.GetUserName()
-                };
-
-                using (var dbContext = new ApplicationDbContext())
-                {
-                    dbContext.ItemNotes.Add(note);
-                    dbContext.SaveChanges();
-                }
-            }
-
-            return result;
-        }
-        #endregion
-
         #region Delete Adventure
 
         [Authorize, HttpPost]
@@ -627,8 +663,13 @@ namespace AdventureLog.Controllers
 
             using (var dbContext = new ApplicationDbContext())
             {
+                var userId = User.Identity.GetUserId();
+
                 var item = (from i in dbContext.Items
+                            let player = i.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId)
                             where i.Item_PK == item_PK
+                                && player.IsActive
+                                && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
                             select i).FirstOrDefault();
 
                 item.IsActive = false;
@@ -642,41 +683,86 @@ namespace AdventureLog.Controllers
 
         #endregion
 
+        #region Comments
+        [Authorize, HttpPost, ValidateInput(false)]
+        public ActionResult CreateItemComment(long Item_PK, string newComment, long? parentComment = null)
+        {
+            ActionResult result = RedirectToAction("ItemDetails", new { id = Item_PK });
+
+            if (!string.IsNullOrWhiteSpace(newComment))
+            {
+                var userId = User.Identity.GetUserId();
+
+                var note = new ItemNote()
+                {
+                    Item_PK = Item_PK,
+                    UserId_PK = userId,
+                    ParentItemNote_PK = parentComment,
+                    Text = newComment,
+                    IsActive = true,
+                    CreatedDate = DateTime.Now,
+                    LastModifiedDate = DateTime.Now,
+                    LastModifiedUser = User.Identity.GetUserName()
+                };
+
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    // Check if an item exists that meets the qualifications.
+                    var isPlayer = (from i in dbContext.Items
+                                    let player = i.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId)
+                                    where i.Item_PK == Item_PK
+                                        && i.IsActive
+                                        && i.Adventure.IsActive
+                                        && player.IsActive
+                                    select i).Any();
+
+                    if (isPlayer)
+                    {
+                        dbContext.ItemNotes.Add(note);
+                        dbContext.SaveChanges();
+                    }
+                }
+            }
+
+            return result;
+        }
+        #endregion
+
         #endregion
 
         #region Utilities
-        public static bool IsPlayer(IIdentity user, long adventure_Pk)
+        public static bool IsInRole(IIdentity user, long adventure_Pk, PlayerRole.PlayerRoleKey playerRoleKey)
         {
-            bool isPlayer = true;
+            bool isInRole = true;
             string userId = user.GetUserId();
 
             using (var dbContext = new ApplicationDbContext())
             {
-                isPlayer = (from p in dbContext.Players
+                isInRole = (from p in dbContext.Players
                             where p.UserId_PK == userId
                                 && p.Adventure_PK == adventure_Pk
-                                && p.PlayerRole_PK == (int)PlayerRole.PlayerRoleKey.Player
+                                && p.PlayerRole_PK == (int)playerRoleKey
+                                && p.IsActive
                             select p).Any();
             }
 
-            return isPlayer;
+            return isInRole;
         }
 
-        public static bool IsGamemaster(IIdentity user, long adventure_Pk)
+        public static bool IsInAnyRole(IIdentity user, long adventure_Pk, IEnumerable<PlayerRole.PlayerRoleKey> playerRoleKeys)
         {
-            bool isPlayer = true;
-            string userId = user.GetUserId();
+            bool isInAnyRole = false;
 
-            using (var dbContext = new ApplicationDbContext())
+            foreach (var key in playerRoleKeys)
             {
-                isPlayer = (from p in dbContext.Players
-                            where p.UserId_PK == userId
-                                && p.Adventure_PK == adventure_Pk
-                                && p.PlayerRole_PK == (int)PlayerRole.PlayerRoleKey.Gamemaster
-                            select p).Any();
+                if (IsInRole(user, adventure_Pk, key))
+                {
+                    isInAnyRole = true;
+                    break;
+                }
             }
 
-            return isPlayer;
+            return isInAnyRole;
         }
         #endregion
     }

@@ -12,8 +12,8 @@
     @Scripts.Render("~/bundles/autocomplete")
     <script src="https://cdn.ckeditor.com/4.11.3/standard/ckeditor.js"></script>
 </head>
-<body>
-    <div class="navbar navbar-dark bg-primary sticky-top">
+<body class="bg-light">
+    <div class="navbar navbar-dark bg-dark sticky-top">
         <div class="container">
             <div class="navbar-header">
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggleExternalContent" aria-controls="navbarToggleExternalContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -30,8 +30,8 @@
             }
             <div class="collapse navbar-collapse" id="navbarToggleExternalContent">
                 <ul class="navbar-nav mr-auto mt-2 mt-lg-0">
-                    <li>@Html.ActionLink("About", "About", "Home", new { @class = "nav-link" })</li>
-                    <li>@Html.ActionLink("Contact", "Contact", "Home", new { @class = "nav-link" })</li>
+                    <li>@Html.ActionLink("About", "About", "Home", new { @class = "navbar-dark nav-link" })</li>
+                    <li>@Html.ActionLink("Contact", "Contact", "Home", new { @class = "navbar-dark nav-link" })</li>
                     <li>@Html.Partial("_LoginPartial")</li>
                 </ul>
             </div>

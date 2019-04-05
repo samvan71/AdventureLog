@@ -8,6 +8,8 @@ using System.Web.Mvc;
 
 namespace AdventureLog.Models
 {
+    #region Adventure Information
+
     public class Adventure
     {
         [Key]
@@ -31,7 +33,11 @@ namespace AdventureLog.Models
         [MaxLength(100, ErrorMessage ="Invite Password must be less than 100 characters."), Display(Name = "Invite Password")]
         public string InvitePassword { get; set; }
 
-        [Required, Display(Name = "Keep Adventure: WARNING DELETES ADVENTURE")]
+        public bool IsSecured { get; set; }
+
+        public bool IsPublic { get; set; }
+
+        [Required]
         public bool IsActive { get; set; }
 
         [Required]
@@ -51,6 +57,55 @@ namespace AdventureLog.Models
 
         [InverseProperty("Adventure")]
         public virtual ICollection<AdventureNote> AdventureNotes { get; set; }
+    }
+
+    public class Item
+    {
+        [Key]
+        public long Item_PK { get; set; }
+
+        [Required]
+        public long Adventure_PK { get; set; }
+
+        public long? ParentItem_PK { get; set; }
+
+        [Required, StringLength(256, ErrorMessage = "Name cannot be longer than 256 characters."), Display(Name = "Item Name")]
+        public string Name { get; set; }
+
+        [MaxLength(4000, ErrorMessage = "Short Descripition cannot be longer than 4000 characters."), Display(Name = "Summary")]
+        public string ShortDescription { get; set; }
+
+        [AllowHtml]
+        public string Description { get; set; }
+
+        [AllowHtml, Display(Name = "Gamemaster Notes (Cannot be seen by players)")]
+        public string GamemasterNotes { get; set; }
+        
+        public string MapFileName { get; set; }
+
+        [Required, Display(Name = "Keep Item: WARNING DELETES Item")]
+        public bool IsActive { get; set; }
+
+        [Required]
+        public DateTime CreatedDate { get; set; }
+
+        [Required]
+        public DateTime LastModifiedDate { get; set; }
+
+        [Required]
+        public string LastModifiedUser { get; set; }
+
+        [ForeignKey("Adventure_PK")]
+        public Adventure Adventure { get; set; }
+
+        [ForeignKey("ParentItem_PK")]
+        public Item ParentItem { get; set; }
+
+        [InverseProperty("Item")]
+        public virtual ICollection<ItemNote> ItemNotes { get; set; }
+
+        [InverseProperty("ParentItem")]
+        public virtual ICollection<Item> ChildItems { get; set; }
     }
 
     #region Player
@@ -110,58 +165,6 @@ namespace AdventureLog.Models
     }
 
     #endregion
-
-    #region Adventure Information
-
-    public class Item
-    {
-        [Key]
-        public long Item_PK { get; set; }
-
-        [Required]
-        public long Adventure_PK { get; set; }
-
-        public long? ParentItem_PK { get; set; }
-
-        [Required, StringLength(256, ErrorMessage = "Name cannot be longer than 256 characters."), Display(Name = "Item Name")]
-        public string Name { get; set; }
-
-        [MaxLength(4000, ErrorMessage = "Short Descripition cannot be longer than 4000 characters."), Display(Name = "Summary")]
-        public string ShortDescription { get; set; }
-
-        [AllowHtml]
-        public string Description { get; set; }
-
-        [AllowHtml, Display(Name = "Gamemaster Notes (Cannot be seen by players)")]
-        public string GamemasterNotes { get; set; }
-        
-        public string MapFileName { get; set; }
-
-        [Required, Display(Name = "Keep Item: WARNING DELETES Item")]
-        public bool IsActive { get; set; }
-
-        [Required]
-        public DateTime CreatedDate { get; set; }
-
-        [Required]
-        public DateTime LastModifiedDate { get; set; }
-
-        [Required]
-        public string LastModifiedUser { get; set; }
-
-        [ForeignKey("Adventure_PK")]
-        public Adventure Adventure { get; set; }
-
-        [ForeignKey("ParentItem_PK")]
-        public Item ParentItem { get; set; }
-
-        [InverseProperty("Item")]
-        public virtual ICollection<ItemNote> ItemNotes { get; set; }
-
-        [InverseProperty("ParentItem")]
-        public virtual ICollection<Item> ChildItems { get; set; }
-    }
-
     #region Hotspot Information
 
     /*
