@@ -180,9 +180,9 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Migrations\201903102224460_Initial.cs" />
-    <Compile Include="Migrations\201903102224460_Initial.Designer.cs">
-      <DependentUpon>201903102224460_Initial.cs</DependentUpon>
+    <Compile Include="Migrations\201904041921312_Initial.cs" />
+    <Compile Include="Migrations\201904041921312_Initial.Designer.cs">
+      <DependentUpon>201904041921312_Initial.cs</DependentUpon>
     </Compile>
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Models\AccountViewModels.cs" />
@@ -204,6 +204,7 @@
     <Content Include="Content\font-awesome.css" />
     <Content Include="Content\font-awesome.min.css" />
     <Content Include="Content\fontawesome-all.css" />
+    <Content Include="Content\jquery.auto-complete.css" />
     <Content Include="Content\lang\summernote-ar-AR.js" />
     <Content Include="Content\lang\summernote-bg-BG.js" />
     <Content Include="Content\lang\summernote-ca-ES.js" />
@@ -295,6 +296,7 @@
     <Content Include="Scripts\jquery-3.3.1.slim.js" />
     <Content Include="Scripts\jquery-3.3.1.slim.min.js" />
     <None Include="Scripts\jquery.validate-vsdoc.js" />
+    <Content Include="Scripts\jquery.auto-complete.js" />
     <Content Include="Scripts\jquery.validate.js" />
     <Content Include="Scripts\jquery.validate.min.js" />
     <Content Include="Scripts\jquery.validate.unobtrusive.js" />
@@ -358,12 +360,6 @@
     <Content Include="Views\AdventureHome\Details.cshtml" />
     <Content Include="Views\AdventureHome\Edit.cshtml" />
     <Content Include="Views\AdventureHome\Invite.cshtml" />
-    <Content Include="Views\AdventureHome\WorldCreate.cshtml" />
-    <Content Include="Views\AdventureHome\WorldDetails.cshtml" />
-    <Content Include="Views\AdventureHome\WorldEdit.cshtml" />
-    <Content Include="Views\AdventureHome\AreaCreate.cshtml" />
-    <Content Include="Views\AdventureHome\AreaDetails.cshtml" />
-    <Content Include="Views\AdventureHome\AreaEdit.cshtml" />
     <Content Include="Views\AdventureHome\ItemCreate.cshtml" />
     <Content Include="Views\AdventureHome\ItemDetails.cshtml" />
     <Content Include="Views\AdventureHome\ItemEdit.cshtml" />
@@ -383,8 +379,8 @@
     <TypeScriptCompile Include="Scripts\index.d.ts" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Migrations\201903102224460_Initial.resx">
-      <DependentUpon>201903102224460_Initial.cs</DependentUpon>
+    <EmbeddedResource Include="Migrations\201904041921312_Initial.resx">
+      <DependentUpon>201904041921312_Initial.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>

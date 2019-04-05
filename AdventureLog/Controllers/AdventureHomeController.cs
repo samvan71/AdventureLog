@@ -122,7 +122,7 @@ namespace AdventureLog.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [Authorize]
-        [Route("adventure/{id:long}", Name = "Details")]
+        [Route("adventure/{id:long}")]
         public ActionResult Details(long id)
         {
             Adventure adventure = null;
@@ -137,10 +137,10 @@ namespace AdventureLog.Controllers
                                 && a.Players.Where(p => p.UserId_PK == userId).FirstOrDefault().IsActive
                                 && a.IsActive
                              select a)
-                             // Include worlds and areas as they are displayed in cards.
-                             .Include(a => a.Worlds.Select(w => w.Areas))
+                             // Include Items and areas as they are displayed in cards.
                              .Include(a => a.AdventureNotes.Select(n => n.ApplicationUser))
                              .Include(a => a.AdventureNotes.Select(n => n.ChildNotes))
+                             .Include(a => a.Items.Select(w => w.ChildItems))
                              .FirstOrDefault();
             }
 
@@ -339,19 +339,84 @@ namespace AdventureLog.Controllers
         }
         #endregion
 
+        #region Delete Adventure
+
+        [Authorize, HttpPost]
+        public ActionResult DeleteAdventure(long adventure_PK)
+        {
+            ActionResult result = RedirectToAction("Details", new { id = adventure_PK });
+
+            using (var dbContext = new ApplicationDbContext())
+            {
+                var adventure = (from a in dbContext.Adventures
+                                 where a.Adventure_PK == adventure_PK
+                                    && a.IsActive
+                                 select a).FirstOrDefault();
+
+                adventure.IsActive = false;
+
+                dbContext.Entry(adventure).State = EntityState.Modified;
+                dbContext.SaveChanges();
+            }
+
+            return result;
+        }
+
         #endregion
 
-        #region World Actions
+        #region Search
+
+        [Authorize, HttpPost]
+        public ActionResult AdventureSearch(long adventure_PK, string searchText)
+        {
+            ActionResult result = RedirectToAction("SearchResults", new { id = adventure_PK });
+
+            using (var dbContext = new ApplicationDbContext())
+            {
+                var results = (from i in dbContext.Items
+                               where i.Adventure_PK == adventure_PK
+                                        && i.Name == searchText
+                               select i).AsEnumerable();
+
+                if (results.Count() > 1)
+                {
+                    result = RedirectToAction("ItemDetails", new { id = results.First().Item_PK });
+                }
+                else
+                {
+                    result = RedirectToAction("SearchResults", new { id = adventure_PK, results = results});
+                }
+            }
+
+            return result;
+        }
+
+        [HttpGet]
+        [Route("adventure/{id:long}/Search/Results")]
+        public ActionResult SearchResults(long id, IEnumerable<Item> results = null)
+        {
+            ActionResult result = null;
+
+            result = View("SearchResults", results);
+
+            return result;
+        }
+
+        #endregion
+
+        #endregion
+
+        #region Item Actions
 
         #region Create
 
         /// <summary>
-        /// HTTP Get.  /adventure/{adventureId}/World/Create
+        /// HTTP Get.  /adventure/{adventureId}/Item/Create
         /// </summary>
         /// <param name="adventureId"></param>
         [Authorize]
-        [Route("adventure/{adventureId:long}/CreateWorld", Name ="WorldCreate")]
-        public ActionResult WorldCreate(long adventureId)
+        [Route("adventure/{adventureId:long}/CreateItem/{parentId:long?}", Name ="ItemCreate")]
+        public ActionResult ItemCreate(long adventureId, long? parentId)
         {
             Adventure adventure = null;
             ActionResult result = RedirectToAction("Details", adventureId);
@@ -371,352 +436,11 @@ namespace AdventureLog.Controllers
 
             if (adventure != null)
             {
-                var model = new World()
+                var model = new Item()
                 {
                     Adventure = adventure,
                     Adventure_PK = adventure.Adventure_PK,
-                    CreatedDate = DateTime.Now,
-                    LastModifiedDate = DateTime.Now,
-                    LastModifiedUser = User.Identity.GetUserName()
-                };
-
-                result = View("WorldCreate", model);
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// HTTP Post for Creating a new world.
-        /// </summary>
-        /// <param name="model"></param>
-        /// <returns></returns>
-        [HttpPost]
-        [Authorize]
-        [Route("adventure/{adventureId:long}/CreateWorld")]
-        public ActionResult WorldCreate(World model)
-        {
-            if (ModelState.IsValid)
-            {
-                model.IsActive = true;
-
-                using (var dbContext = new ApplicationDbContext())
-                {
-                    dbContext.Worlds.Add(model);
-                    dbContext.SaveChanges();
-                }
-
-                return RedirectToAction("Details", model.Adventure_PK);
-            }
-
-            // If we got this far, redisplay the view for corrections.
-            return View(model);
-        }
-
-        #endregion
-
-        #region Details
-        [Authorize]
-        [Route("world/{id:long}", Name = "WorldDetails")]
-        public ActionResult WorldDetails(long id)
-        {
-            World world = null;
-            ActionResult result = RedirectToAction("Index");
-
-            using (var dbContext = new ApplicationDbContext())
-            {
-                string userId = User.Identity.GetUserId();
-
-                world = (from w in dbContext.Worlds
-                         where w.World_PK == id
-                            && w.IsActive
-                            // Assure that the adventure is one the player can view AND is not deleted.
-                            && w.Adventure.IsActive
-                            && w.Adventure.Players.Any(p => p.UserId_PK == userId)
-                         select w)
-                         .Include(w => w.Areas.Select(a => a.Items))
-                         .FirstOrDefault();
-            }
-
-            if (world != null)
-            {
-                result = View("WorldDetails", world);
-            }
-
-            return result;
-        }
-        #endregion
-
-        #region Edit
-        [Authorize]
-        [Route("world/{id:long}/Edit", Name="WorldEdit")]
-        public ActionResult WorldEdit(long id)
-        {
-            World world = null;
-            ActionResult view = RedirectToAction("WorldDetails", id);
-
-            using (var dbContext = new ApplicationDbContext())
-            {
-                string userId = User.Identity.GetUserId();
-
-                world = (from w in dbContext.Worlds
-                             where w.World_PK == id
-                                // Assure that the adventure is one the player can edit AND is not deleted.
-                                && w.IsActive
-                                && w.Adventure.IsActive
-                                && w.Adventure.Players.Any(p => p.UserId_PK == userId)
-                                && (w.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId).PlayerRole.PlayerRole_PK
-                                        == (long)PlayerRole.PlayerRoleKey.Gamemaster)
-                             select w).FirstOrDefault();
-            }
-
-            if (world != null)
-            {
-                view = View("WorldEdit", world);
-            }
-
-            return view;
-        }
-
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize]
-        [Route("world/{id:long}/Edit")]
-        public ActionResult WorldEdit(World model)
-        {
-            ActionResult result = View(model);
-
-            // If the model is valid, update database, and return to detail view.
-            if (ModelState.IsValid)
-            {
-                using (var dbContext = new ApplicationDbContext())
-                {
-                    // Update model values
-                    model.LastModifiedDate = DateTime.Now;
-                    model.LastModifiedUser = User.Identity.GetUserName();
-
-                    // If everthing goes well, update database with listed properties.
-                    dbContext.Entry(model).State = EntityState.Modified;
-                    dbContext.SaveChanges();
-                }
-
-                result = RedirectToAction("WorldDetails", model.World_PK);
-            }
-
-            return result;
-        }
-        #endregion
-
-        #endregion
-
-        #region Area Actions
-
-        #region Create
-
-        /// <summary>
-        /// HTTP Get.  /world/{worldId}/CreateArea
-        /// </summary>
-        /// <param name="worldId"></param>
-        [Authorize]
-        [Route("world/{worldId:long}/CreateArea", Name = "AreaCreate")]
-        public ActionResult AreaCreate(long worldId)
-        {
-            World world = null;
-            ActionResult result = RedirectToAction("WorldDetails", worldId);
-
-            using (var dbContext = new ApplicationDbContext())
-            {
-                string userId = User.Identity.GetUserId();
-
-                world = (from w in dbContext.Worlds
-                         where w.World_PK == worldId
-                            && w.IsActive
-                            && w.Adventure.IsActive
-                            && w.Adventure.Players.Any(p => p.UserId_PK == userId)
-                            && (w.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId).PlayerRole.PlayerRole_PK
-                                    == (long)PlayerRole.PlayerRoleKey.Gamemaster)
-                         select w).FirstOrDefault();
-            }
-
-            if (world != null)
-            {
-                var model = new Area()
-                {
-                    World = world,
-                    World_PK = world.World_PK,
-                    CreatedDate = DateTime.Now,
-                    LastModifiedDate = DateTime.Now,
-                    LastModifiedUser = User.Identity.GetUserName()
-                };
-
-                result = View("AreaCreate", model);
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// HTTP Post for Creating a new world.
-        /// </summary>
-        /// <param name="model"></param>
-        /// <returns></returns>
-        [HttpPost]
-        [Authorize]
-        [Route("world/{worldId:long}/CreateArea")]
-        public ActionResult AreaCreate(Area model)
-        {
-            if (ModelState.IsValid)
-            {
-                model.IsActive = true;
-
-                using (var dbContext = new ApplicationDbContext())
-                {
-                    dbContext.Areas.Add(model);
-                    dbContext.SaveChanges();
-                }
-
-                return RedirectToAction("WorldDetails", new { id = model.World_PK });
-            }
-
-            // If we got this far, redisplay the view for corrections.
-            return View(model);
-        }
-
-        #endregion
-
-        #region Details
-        [Authorize]
-        [Route("area/{id:long}", Name = "AreaDetails")]
-        public ActionResult AreaDetails(long id)
-        {
-            Area area = null;
-            ActionResult result = RedirectToAction("Index");
-
-            using (var dbContext = new ApplicationDbContext())
-            {
-                string userId = User.Identity.GetUserId();
-
-                area = (from a in dbContext.Areas
-                         where a.Area_PK == id
-                            && a.IsActive
-                            && a.World.IsActive
-                            // Assure that the adventure is one the player can view AND is not deleted.
-                            && a.World.Adventure.IsActive
-                            && a.World.Adventure.Players.Any(p => p.UserId_PK == userId)
-                         select a)
-                         .Include(a => a.Items)
-                         .Include(a => a.World)
-                         .FirstOrDefault();
-            }
-
-            if (area != null)
-            {
-                result = View("AreaDetails", area);
-            }
-
-            return result;
-        }
-        #endregion
-
-        #region Edit
-        [Authorize]
-        [Route("area/{id:long}/Edit", Name = "AreaEdit")]
-        public ActionResult AreaEdit(long id)
-        {
-            Area area = null;
-            ActionResult view = RedirectToAction("AreaDetails", id);
-
-            using (var dbContext = new ApplicationDbContext())
-            {
-                string userId = User.Identity.GetUserId();
-
-                area = (from a in dbContext.Areas
-                         where a.Area_PK == id
-                            // Assure that the adventure is one the player can edit AND is not deleted.
-                            && a.IsActive
-                            && a.World.IsActive
-                            && a.World.Adventure.IsActive
-                            && a.World.Adventure.Players.Any(p => p.UserId_PK == userId)
-                            && (a.World.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId).PlayerRole.PlayerRole_PK
-                                    == (long)PlayerRole.PlayerRoleKey.Gamemaster)
-                         select a).FirstOrDefault();
-            }
-
-            if (area != null)
-            {
-                view = View("AreaEdit", area);
-            }
-
-            return view;
-        }
-
-
-        [HttpPost, Authorize, ValidateAntiForgeryToken]
-        [Route("area/{id:long}/Edit")]
-        public ActionResult AreaEdit(Area model)
-        {
-            ActionResult result = View(model);
-
-            // If the model is valid, update database, and return to detail view.
-            if (ModelState.IsValid)
-            {
-                using (var dbContext = new ApplicationDbContext())
-                {
-                    // Update model values
-                    model.LastModifiedDate = DateTime.Now;
-                    model.LastModifiedUser = User.Identity.GetUserName();
-
-                    // If everthing goes well, update database with listed properties.
-                    dbContext.Entry(model).State = EntityState.Modified;
-                    dbContext.SaveChanges();
-                }
-
-                result = RedirectToAction("AreaDetails", model.Area_PK);
-            }
-
-            return result;
-        }
-        #endregion
-
-        #endregion
-
-        #region Item Actions
-
-        #region Create
-
-        /// <summary>
-        /// HTTP Get.  /area/{areaId}/CreateItem
-        /// </summary>
-        /// <param name="worldId"></param>
-        [Authorize]
-        [Route("area/{areaId:long}/CreateItem", Name = "ItemCreate")]
-        public ActionResult ItemCreate(long areaId)
-        {
-            Area area = null;
-            ActionResult result = RedirectToAction("AreaDetails", areaId);
-
-            using (var dbContext = new ApplicationDbContext())
-            {
-                string userId = User.Identity.GetUserId();
-
-                area = (from a in dbContext.Areas
-                         where a.Area_PK == areaId
-                            && a.IsActive
-                            && a.World.IsActive
-                            && a.World.Adventure.IsActive
-                            && a.World.Adventure.Players.Any(p => p.UserId_PK == userId)
-                            && (a.World.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId).PlayerRole.PlayerRole_PK
-                                    == (long)PlayerRole.PlayerRoleKey.Gamemaster)
-                        select a).FirstOrDefault();
-            }
-
-            if (area != null)
-            {
-                var model = new Item()
-                {
-                    Area = area,
-                    Area_PK = area.Area_PK,
+                    ParentItem_PK = parentId,
                     CreatedDate = DateTime.Now,
                     LastModifiedDate = DateTime.Now,
                     LastModifiedUser = User.Identity.GetUserName()
@@ -735,9 +459,11 @@ namespace AdventureLog.Controllers
         /// <returns></returns>
         [HttpPost]
         [Authorize]
-        [Route("area/{worldId:long}/CreateItem")]
+        [Route("adventure/{adventureId:long}/CreateItem")]
         public ActionResult ItemCreate(Item model)
         {
+            ActionResult result = View(model);
+
             if (ModelState.IsValid)
             {
                 model.IsActive = true;
@@ -748,44 +474,51 @@ namespace AdventureLog.Controllers
                     dbContext.SaveChanges();
                 }
 
-                return RedirectToAction("AreaDetails", new { id = model.Area_PK });
+                if (model.ParentItem_PK != null)
+                {
+                    result = RedirectToAction("ItemDetails", new { id = model.ParentItem_PK });
+                }
+                else
+                {
+                    result = RedirectToAction("Details", new { id = model.Adventure_PK });
+                }
             }
 
             // If we got this far, redisplay the view for corrections.
-            return View(model);
+            return result;
         }
 
         #endregion
 
         #region Details
         [Authorize]
-        [Route("item/{id:long}", Name = "ItemDetails")]
+        [Route("Item/{id:long}", Name = "ItemDetails")]
         public ActionResult ItemDetails(long id)
         {
-            Item item = null;
+            Item Item = null;
             ActionResult result = RedirectToAction("Index");
 
             using (var dbContext = new ApplicationDbContext())
             {
                 string userId = User.Identity.GetUserId();
 
-                item = (from i in dbContext.Items
-                        where i.Item_PK == id
-                           && i.IsActive
-                           && i.Area.IsActive
-                           && i.Area.World.IsActive
-                           && i.Area.World.Adventure.IsActive
-                           // Assure that the adventure is one the player can view AND is not deleted.
-                           && i.Area.World.Adventure.Players.Any(p => p.UserId_PK == userId)
-                        select i)
-                         .Include(i => i.Area)
-                         .Include(i => i.Area.World)
+                Item = (from w in dbContext.Items
+                         where w.Item_PK == id
+                            && w.IsActive
+                            // Assure that the adventure is one the player can view AND is not deleted.
+                            && w.Adventure.IsActive
+                            && w.Adventure.Players.Any(p => p.UserId_PK == userId)
+                         select w)
+                         .Include(w => w.ItemNotes.Select(n => n.ApplicationUser))
+                         .Include(w => w.ItemNotes.Select(n => n.ChildNotes))
+                         // Load 2 levels of children
+                         .Include(w => w.ChildItems.Select(c => c.ChildItems))
                          .FirstOrDefault();
             }
 
-            if (item != null)
+            if (Item != null)
             {
-                result = View("ItemDetails", item);
+                result = View("ItemDetails", Item);
             }
 
             return result;
@@ -794,40 +527,40 @@ namespace AdventureLog.Controllers
 
         #region Edit
         [Authorize]
-        [Route("item/{id:long}/Edit", Name = "ItemEdit")]
+        [Route("Item/{id:long}/Edit", Name="ItemEdit")]
         public ActionResult ItemEdit(long id)
         {
-            Item item = null;
+            Item Item = null;
             ActionResult view = RedirectToAction("ItemDetails", id);
 
             using (var dbContext = new ApplicationDbContext())
             {
                 string userId = User.Identity.GetUserId();
 
-                item = (from i in dbContext.Items
-                        where i.Item_PK == id
-                           // Assure that the adventure is one the player can edit AND is not deleted.
-                           && i.IsActive
-                           && i.Area.IsActive
-                           && i.Area.World.IsActive
-                           && i.Area.World.Adventure.IsActive
-                           && i.Area.World.Adventure.Players.Any(p => p.UserId_PK == userId)
-                           && (i.Area.World.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId).PlayerRole.PlayerRole_PK
-                                   == (long)PlayerRole.PlayerRoleKey.Gamemaster)
-                        select i).FirstOrDefault();
+                Item = (from w in dbContext.Items
+                             where w.Item_PK == id
+                                // Assure that the adventure is one the player can edit AND is not deleted.
+                                && w.IsActive
+                                && w.Adventure.IsActive
+                                && w.Adventure.Players.Any(p => p.UserId_PK == userId)
+                                && (w.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId).PlayerRole.PlayerRole_PK
+                                        == (long)PlayerRole.PlayerRoleKey.Gamemaster)
+                             select w).FirstOrDefault();
             }
 
-            if (item != null)
+            if (Item != null)
             {
-                view = View("ItemEdit", item);
+                view = View("ItemEdit", Item);
             }
 
             return view;
         }
 
 
-        [HttpPost, Authorize, ValidateAntiForgeryToken]
-        [Route("item/{id:long}/Edit")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        [Route("Item/{id:long}/Edit")]
         public ActionResult ItemEdit(Item model)
         {
             ActionResult result = View(model);
@@ -851,6 +584,62 @@ namespace AdventureLog.Controllers
 
             return result;
         }
+        #endregion
+
+        #region Comments
+        [Authorize, HttpPost, ValidateInput(false)]
+        public ActionResult CreateItemComment(long Item_PK, string newComment, long? parentComment = null)
+        {
+            ActionResult result = RedirectToAction("ItemDetails", new { id = Item_PK });
+
+            if (!string.IsNullOrWhiteSpace(newComment))
+            {
+                var note = new ItemNote()
+                {
+                    Item_PK = Item_PK,
+                    UserId_PK = User.Identity.GetUserId(),
+                    ParentItemNote_PK = parentComment,
+                    Text = newComment,
+                    IsActive = true,
+                    CreatedDate = DateTime.Now,
+                    LastModifiedDate = DateTime.Now,
+                    LastModifiedUser = User.Identity.GetUserName()
+                };
+
+                using (var dbContext = new ApplicationDbContext())
+                {
+                    dbContext.ItemNotes.Add(note);
+                    dbContext.SaveChanges();
+                }
+            }
+
+            return result;
+        }
+        #endregion
+
+        #region Delete Adventure
+
+        [Authorize, HttpPost]
+        public ActionResult DeleteItem(long item_PK, long adventure_pk)
+        {
+            // If it is successfully deleted, go to the adventure detail page.
+            ActionResult result = RedirectToAction("Details", new { id = adventure_pk });
+
+            using (var dbContext = new ApplicationDbContext())
+            {
+                var item = (from i in dbContext.Items
+                            where i.Item_PK == item_PK
+                            select i).FirstOrDefault();
+
+                item.IsActive = false;
+
+                dbContext.Entry(item).State = EntityState.Modified;
+                dbContext.SaveChanges();
+            }
+
+            return result;
+        }
+
         #endregion
 
         #endregion

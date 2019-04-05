@@ -12,6 +12,8 @@ namespace AdventureLog
         public static void RegisterRoutes(RouteCollection routes)
         {
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
+            // Ensures that the Adventure Home Routes are never used, only the tagged routes.
+            routes.IgnoreRoute("AdventureHome/");
 
             routes.MapMvcAttributeRoutes();
 

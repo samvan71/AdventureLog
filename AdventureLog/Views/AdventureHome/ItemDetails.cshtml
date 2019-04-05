@@ -1,9 +1,9 @@
 ﻿@model AdventureLog.Models.Item
 @using AdventureLog.Controllers
+@using AdventureLog.Models
 @{
-    ViewBag.Title = "Item Details";
+    ViewBag.Title = "Item Details" ;
 }
-
 <h2>@Model.Name</h2>
 
 <div>
@@ -17,9 +17,14 @@
                href="#nav-summary"
                role="tab"
                aria-controls="nav-home"
-               ar
-               Eternal life, endles torture.
-               ia-selected="true">Details</a>
+               aria-selected="true">Details</a>
+            <a class="nav-item nav-link"
+               id="nav-Items-tab"
+               data-toggle="tab"
+               href="#nav-areas"
+               role="tab"
+               aria-controls="nav-home"
+               aria-selected="true">Areas</a>
             <a class="nav-item nav-link"
                id="nav-comments-tab"
                data-toggle="tab"
@@ -40,19 +45,223 @@
                     @Html.Raw(Model.Description)
                 </dd>
 
-                @if (AdventureHomeController.IsGamemaster(User.Identity, Model.Area.World.Adventure_PK))
+                @if (AdventureHomeController.IsGamemaster(User.Identity, Model.Adventure_PK))
                 {
+                    <dt>
+                        @Html.DisplayNameFor(model => model.GamemasterNotes):
+                    </dt>
+
+                    <dd>
+                        @Html.Raw(Model.GamemasterNotes)
+                    </dd>
+
                     @Html.ActionLink("Edit", "ItemEdit", new { id = Model.Item_PK }, new { @class = "btn btn-primary" })
                 }
 
             </dl>
         </div>
+        <div class="tab-pane fade p-3" id="nav-areas" role="tabpanel" aria-labelledby="nav-profile-tab">
+            <div class="row p-3">
+                <div class="nav flex-column nav-pills col-2" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                    @Html.ActionLink("Create Sub-Item", "ItemCreate", new { adventureId = Model.Adventure_PK, parentId = Model.Item_PK }, new { @class = "btn btn-primary mb-1" })
+                    @{
+                        bool first = true;
+                        foreach (var child in Model.ChildItems.Where(w => w.ParentItem_PK == Model.Item_PK).AsEnumerable())
+                        {
+                            <a class="btn btn-outline-secondary mb-1 @(first ? "active" : "")"
+                               id="v-pills-tab-@child.Item_PK"
+                               data-toggle="pill"
+                               href="#v-pills-item-@child.Item_PK"
+                               role="tab"
+                               aria-controls="v-pills-item"
+                               aria-selected="true">@child.Name</a>
+
+                            first = false;
+                        }
+                    }
+                </div>
+                <div class="tab-content col-10" id="v-pills-tabContent">
+                    @{
+                        first = true;
+                        foreach (var Item in Model.ChildItems.Where(w => w.ParentItem_PK == Model.Item_PK).AsEnumerable())
+                        {
+                            <div class="tab-pane fade show @(first ? "active" : "")"
+                                 id="v-pills-item-@Item.Item_PK"
+                                 role="tabpanel"
+                                 aria-labelledby="v-pills-tab-@Item.Item_PK">
+                                <div class="card border-dark">
+                                    <div class="card-header">
+                                        <h2 class="float-left text-dark">@Item.Name</h2>
+                                        @Html.ActionLink("See More", "ItemDetails", new { id = Item.Item_PK }, new { @class = "btn btn-primary float-right" })
+                                    </div>
+                                    <div class="card-body text-dark">
+                                        <div class="card-text text-dark mb-2">
+                                            Summary: <br>
+                                            @Item.ShortDescription
+                                        </div>
+                                    </div>
+                                    <div class="list-group-flush">
+                                        @Html.ActionLink("Create New Sub-Item", "ItemCreate",
+                                                         new { adventureId = Model.Adventure_PK, parentId = Model.Item_PK },
+                                                         new { @class = "list-group-item list-group-item-action list-group-item-primary" })
+                                        @foreach (var child in Item.ChildItems)
+                                        {
+                                            <a href="@Url.Action("ItemDetails",
+                                                                     new { id = child.Item_PK})"
+                                               class="list-group-item list-group-item-action list-group-item-secondary">
+                                                <h6>@child.Name: </h6>
+                                                <small>
+                                                    @child.ShortDescription
+                                                </small>
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            first = false;
+                        }
+                    }
+                </div>
+            </div>
+        </div>
         <div class="tab-pane fade p-3" id="nav-comments" role="tabpanel" aria-labelledby="nav-contact-tab">
-            Comments
+            <!--Comments-->
+            @{
+                var parentComments = Model.ItemNotes.Where(n => n.ParentItemNote == null).AsEnumerable();
+
+                foreach (var parent in parentComments)
+                {
+                    <div class="card mb-2 border border-primary">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <p>
+                                        <strong>@parent.ApplicationUser.UserName</strong>
+                                        <small class="float-right">@parent.LastModifiedDate</small>
+                                    </p>
+                                    <div class="clearfix"></div>
+                                    <hr />
+                                    <div class="p-2">
+                                        @Html.Raw(parent.Text)
+                                    </div>
+                                    @if (parent.ChildNotes.Count > 0)
+                                    {
+                                        <button class="btn btn-outline-secondary mb-1"
+                                                data-toggle="collapse"
+                                                href="#reply-@parent.ItemNote_PK"
+                                                aria-expanded="true"
+                                                aria-controls="reply-@parent.ItemNote_PK"
+                                                role="button">
+                                            Replies <i class="fa" aria-hidden="true"></i>
+                                        </button>
+                                    }
+                                    @ShowChildTree(parent)
+                                </div>
+                            </div>
+
+
+                            @helper ShowChildTree(ItemNote parentNote)
+                            {
+                                <button class="btn btn-outline-primary mb-1"
+                                        data-toggle="collapse"
+                                        href="#newReplyHide-@parentNote.ItemNote_PK"
+                                        aria-expanded="true"
+                                        aria-controls="newReplyHide-@parentNote.ItemNote_PK"
+                                        role="button">
+                                    New Reply <i class="fa" aria-hidden="true"></i>
+                                </button>
+                                <!--Reply Section-->
+                                <div class="collapse" id="newReplyHide-@parentNote.ItemNote_PK">
+                                    <div class="card card-inner mb-1 mt-1 border border-secondary">
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-12">
+                                                    <p>
+
+                                                        @using (Html.BeginForm("CreateItemComment", "AdventureHome"))
+                                                        {
+                                                            <textarea rows="5"
+                                                                      id="NewReply-@parentNote.ItemNote_PK"
+                                                                      name="newComment"></textarea>
+                                                            <script>CKEDITOR.replace('NewReply-@parentNote.ItemNote_PK')</script>
+                                                            @Html.HiddenFor(model => model.Item_PK)
+                                                            @Html.Hidden("parentComment", parentNote.ItemNote_PK)
+
+                                                            <input type="submit" value="Post Reply" class="btn btn-primary ml-2 mt-2 float-right" />
+                                                        }
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Child Comments -->
+                                <div class="collapse show" id="reply-@parentNote.ItemNote_PK">
+                                    @foreach (var child in parentNote.ChildNotes)
+                                    {
+                                        <div class="card card-inner mb-1 mt-1 border border-secondary">
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-12">
+                                                        <p>
+                                                            <strong>@child.ApplicationUser.UserName</strong>
+                                                            <small class="float-right">@child.LastModifiedDate</small>
+                                                        </p>
+                                                        <div class="clearfix"></div>
+                                                        <hr />
+                                                        <div class="p-2">
+                                                            @Html.Raw(child.Text)
+                                                        </div>
+                                                        @if (child.ChildNotes.Count > 0)
+                                                        {
+                                                            <button class="btn btn-outline-secondary mb-1"
+                                                                    data-toggle="collapse"
+                                                                    href="#reply-@child.ItemNote_PK"
+                                                                    aria-expanded="true"
+                                                                    aria-controls="reply-@child.ItemNote_PK"
+                                                                    role="button">
+                                                                Replies <i class="fa" aria-hidden="true"></i>
+                                                            </button>
+                                                        }
+                                                        @ShowChildTree(child)
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            <div class="card border border-primary">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p>
+                                @using (Html.BeginForm("CreateItemComment", "AdventureHome"))
+                                {
+                                    <div>
+                                        <textarea rows="5"
+                                                  id="NewComment"
+                                                  name="newComment"></textarea>
+                                        <script>CKEDITOR.replace('NewComment')</script>
+                                    </div>
+                                    @Html.HiddenFor(model => model.Item_PK);
+
+                                    <input type="submit" value="Post Comment" class="btn btn-primary ml-2 mt-2 float-right" />
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <hr />
 </div>
 <p>
-    @Html.ActionLink("Back to Area", "AreaDetails", new { id = Model.Area_PK }, new { @class = "btn btn-secondary" })
+    @Html.ActionLink("Back to Adventure", "Details", new { id = Model.Adventure_PK}, new { @class = "btn btn-secondary"})
 </p>

@@ -13,7 +13,7 @@ namespace AdventureLog.Migrations
         
         string IMigrationMetadata.Id
         {
-            get { return "201903102224460_Initial"; }
+            get { return "201904041921312_Initial"; }
         }
         
         string IMigrationMetadata.Source

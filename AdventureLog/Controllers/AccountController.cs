@@ -73,9 +73,17 @@ namespace AdventureLog.Controllers
                 return View(model);
             }
 
-            // This doesn't count login failures towards account lockout
-            // To enable password failures to trigger account lockout, change to shouldLockout: true
-            var result = await SignInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, shouldLockout: false);
+            var user = UserManager.FindByEmailAsync(model.Email);
+            SignInStatus result = SignInStatus.Failure;
+
+            if (user != null)
+            {
+                // This doesn't count login failures towards account lockout
+                // To enable password failures to trigger account lockout, change to shouldLockout: true
+                result = await SignInManager.PasswordSignInAsync(user.Result.UserName, model.Password, model.RememberMe, shouldLockout: false);
+            }
+
+
             switch (result)
             {
                 case SignInStatus.Success:

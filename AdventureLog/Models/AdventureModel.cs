@@ -25,6 +25,9 @@ namespace AdventureLog.Models
         [AllowHtml]
         public string Description { get; set; }
 
+        [AllowHtml, Display(Name = "Gamemaster Notes (Cannot be seen by players)")]
+        public string GamemasterNotes { get; set; }
+
         [MaxLength(100, ErrorMessage ="Invite Password must be less than 100 characters."), Display(Name = "Invite Password")]
         public string InvitePassword { get; set; }
 
@@ -44,7 +47,7 @@ namespace AdventureLog.Models
         public virtual ICollection<Player> Players { get; set; }
 
         [InverseProperty("Adventure")]
-        public virtual ICollection<World> Worlds { get; set; }
+        public virtual ICollection<Item> Items { get; set; }
 
         [InverseProperty("Adventure")]
         public virtual ICollection<AdventureNote> AdventureNotes { get; set; }
@@ -110,15 +113,17 @@ namespace AdventureLog.Models
 
     #region Adventure Information
 
-    public class World
+    public class Item
     {
         [Key]
-        public long World_PK { get; set; }
+        public long Item_PK { get; set; }
 
         [Required]
         public long Adventure_PK { get; set; }
 
-        [Required, StringLength(256, ErrorMessage = "Name cannot be longer than 256 characters."), Display(Name = "World Name")]
+        public long? ParentItem_PK { get; set; }
+
+        [Required, StringLength(256, ErrorMessage = "Name cannot be longer than 256 characters."), Display(Name = "Item Name")]
         public string Name { get; set; }
 
         [MaxLength(4000, ErrorMessage = "Short Descripition cannot be longer than 4000 characters."), Display(Name = "Summary")]
@@ -126,10 +131,13 @@ namespace AdventureLog.Models
 
         [AllowHtml]
         public string Description { get; set; }
+
+        [AllowHtml, Display(Name = "Gamemaster Notes (Cannot be seen by players)")]
+        public string GamemasterNotes { get; set; }
         
         public string MapFileName { get; set; }
 
-        [Required, Display(Name = "Keep World: WARNING DELETES WORLD")]
+        [Required, Display(Name = "Keep Item: WARNING DELETES Item")]
         public bool IsActive { get; set; }
 
         [Required]
@@ -144,15 +152,19 @@ namespace AdventureLog.Models
         [ForeignKey("Adventure_PK")]
         public Adventure Adventure { get; set; }
 
-        [InverseProperty("World")]
-        public virtual ICollection<Area> Areas { get; set; }
+        [ForeignKey("ParentItem_PK")]
+        public Item ParentItem { get; set; }
 
-        [InverseProperty("World")]
-        public virtual ICollection<WorldNote> WorldNotes { get; set; }
+        [InverseProperty("Item")]
+        public virtual ICollection<ItemNote> ItemNotes { get; set; }
+
+        [InverseProperty("ParentItem")]
+        public virtual ICollection<Item> ChildItems { get; set; }
     }
 
     #region Hotspot Information
 
+    /*
     public class Hotspot
     {
         [Key]
@@ -200,94 +212,7 @@ namespace AdventureLog.Models
         [ForeignKey("Hotspot_PK")]
         public Hotspot Hotspot { get; set;}
     }
-    
-    #endregion
-
-    #region Area Information
-
-    public class Area
-    {
-        [Key]
-        public long Area_PK { get; set; }
-
-        [Required]
-        public long World_PK { get; set; }
-
-        public long? Hotspot_PK { get; set; }
-
-        [Required, StringLength(256, ErrorMessage = "Name cannot be longer than 256 characters."), Display(Name = "Area Name")]
-        public string Name { get; set; }
-
-        [MaxLength(4000, ErrorMessage = "Short Descripition cannot be longer than 4000 characters."), Display(Name = "Summary")]
-        public string ShortDescription { get; set; }
-
-        [AllowHtml]
-        public string Description { get; set; }
-
-        [Required, Display(Name = "Keep Area: WARNING DELETES AREA")]
-        public bool IsActive { get; set; }
-
-        [Required]
-        public DateTime CreatedDate { get; set; }
-
-        [Required]
-        public DateTime LastModifiedDate { get; set; }
-
-        [Required]
-        public string LastModifiedUser { get; set; }
-
-        [ForeignKey("World_PK")]
-        public World World { get; set; }
-
-        [ForeignKey("Hotspot_PK")]
-        public Hotspot Hotspot { get; set; }
-
-        [InverseProperty("Area")]
-        public virtual ICollection<Item> Items { get; set; }
-
-        [InverseProperty("Area")]
-        public virtual ICollection<AreaNote> AreaNotes { get; set; }
-    }
-    #endregion
-
-    #region Item Information
-
-    public class Item
-    {
-        [Key]
-        public long Item_PK { get; set; }
-
-        [Required]
-        public long Area_PK { get; set; }
-
-        [Required, StringLength(256, ErrorMessage = "Name cannot be longer than 256 characters."), Display(Name = "Item Name")]
-        public string Name { get; set; }
-
-        [MaxLength(4000, ErrorMessage = "Short Descripition cannot be longer than 4000 characters."), Display(Name = "Summary")]
-        public string ShortDescription { get; set; }
-
-        [AllowHtml]
-        public string Description { get; set; }
-
-        [Required, Display(Name = "Keep Item: WARNING DELETES ITEM")]
-        public bool IsActive { get; set; }
-
-        [Required]
-        public DateTime CreatedDate { get; set; }
-
-        [Required]
-        public DateTime LastModifiedDate { get; set; }
-
-        [Required]
-        public string LastModifiedUser { get; set; }
-
-        [ForeignKey("Area_PK")]
-        public Area Area { get; set; }
-
-        [InverseProperty("Item")]
-        public virtual ICollection<ItemNote> ItemNotes { get; set; }
-    }
-
+    */
     #endregion
 
     #region Note Information
@@ -301,6 +226,8 @@ namespace AdventureLog.Models
 
         [Required]
         public string UserId_PK { get; set; }
+
+        public long? ParentItemNote_PK { get; set; }
 
         [Required]
         [AllowHtml]
@@ -323,74 +250,12 @@ namespace AdventureLog.Models
 
         [ForeignKey("UserId_PK")]
         public ApplicationUser ApplicationUser { get; set; }
-    }
 
-    public class AreaNote
-    {
-        [Key]
-        public long AreaNote_PK { get; set; }
+        [ForeignKey("ParentItemNote_PK")]
+        public ItemNote ParentItemNote { get; set; }
 
-        [Required]
-        public long Area_PK { get; set; }
-
-        [Required]
-        public string UserId_PK { get; set; }
-
-        [Required]
-        [AllowHtml]
-        public string Text { get; set; }
-
-        [Required]
-        public bool IsActive { get; set; }
-
-        [Required]
-        public DateTime CreatedDate { get; set; }
-
-        [Required]
-        public DateTime LastModifiedDate { get; set; }
-
-        [Required]
-        public string LastModifiedUser { get; set; }
-
-        [ForeignKey("Area_PK")]
-        public Area Area { get; set; }
-
-        [ForeignKey("UserId_PK")]
-        public ApplicationUser ApplicationUser { get; set; }
-    }
-
-    public class WorldNote
-    {
-        [Key]
-        public long WorldNote_PK { get; set; }
-
-        [Required]
-        public long World_PK { get; set; }
-
-        [Required]
-        public string UserId_PK { get; set; }
-
-        [Required]
-        [AllowHtml]
-        public string Text { get; set; }
-
-        [Required]
-        public bool IsActive { get; set; }
-
-        [Required]
-        public DateTime CreatedDate { get; set; }
-
-        [Required]
-        public DateTime LastModifiedDate { get; set; }
-
-        [Required]
-        public string LastModifiedUser { get; set; }
-
-        [ForeignKey("World_PK")]
-        public World World { get; set; }
-
-        [ForeignKey("UserId_PK")]
-        public ApplicationUser ApplicationUser { get; set; }
+        [InverseProperty("ParentItemNote")]
+        public virtual ICollection<ItemNote> ChildNotes { get; set; }
     }
 
     public class AdventureNote

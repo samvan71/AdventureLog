@@ -3,195 +3,251 @@
 @using AdventureLog.Models;
 @{
     ViewBag.Title = "Adventure Details";
+    ViewBag.SearchToolTip = "Use '#' to search for tags";
 }
 
 <h2>@Model.Name</h2>
-
-<div>
-    <h6>Last edited by: @Model.LastModifiedUser on @Model.LastModifiedDate</h6>
-    <hr />
-    <nav>
-        <div class="nav nav-tabs" id="nav-tab" role="tablist">
-            <a class="nav-item nav-link active"
-               id="nav-Summary-tab"
-               data-toggle="tab"
-               href="#nav-summary"
-               role="tab"
-               aria-controls="nav-home"
-               aria-selected="true">Details</a>
-            <a class="nav-item nav-link"
-               id="nav-worlds-tab"
-               data-toggle="tab"
-               href="#nav-worlds"
-               role="tab"
-               aria-controls="nav-home"
-               aria-selected="true">Worlds</a>
-            <a class="nav-item nav-link"
-               id="nav-comments-tab"
-               data-toggle="tab"
-               href="#nav-comments"
-               role="tab"
-               aria-controls="nav-home"
-               aria-selected="true">Comments</a>
-        </div>
-    </nav>
-    <div class="tab-content" id="nav-tabContent">
-        <div class="tab-pane fade show active p-3" id="nav-summary" role="tabpanel" aria-labelledby="nav-home-tab">
-            <!--Summary-->
-            <dl class="dl-horizontal">
-                <dt>
-                    @Html.LabelFor(model => model.SystemName):
-                </dt>
-
-                <dd>
-                    @Html.DisplayFor(model => model.SystemName)
-                </dd>
-
-                <dt>
-                    @Html.DisplayNameFor(model => model.Description):
-                </dt>
-
-                <dd>
-                    @Html.Raw(Model.Description)
-                </dd>
-
-            </dl>
-            @if (AdventureHomeController.IsGamemaster(User.Identity, Model.Adventure_PK))
-            {
-                @Html.ActionLink("Edit", "Edit", new { id = Model.Adventure_PK }, new { @class = "btn btn-primary" })
-            }
-        </div>
-        <div class="tab-pane fade p-3" id="nav-worlds" role="tabpanel" aria-labelledby="nav-profile-tab">
-            <!--World List-->
-            <div class="row p-3">
-                <div class="nav flex-column nav-pills col-2" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                    @Html.ActionLink("Create New World", "WorldCreate", new { adventureId = Model.Adventure_PK }, new { @class = "btn btn-primary" })
-                    @{
-                        bool first = true;
-                        foreach (var world in Model.Worlds)
-                        {
-                            if (first)
-                            {
-                                <a class="btn btn-outline-secondary active mb-1 mt-1"
-                                   id="v-pills-tab-@world.World_PK"
-                                   data-toggle="pill"
-                                   href="#v-pills-item-@world.World_PK"
-                                   role="tab"
-                                   aria-controls="v-pills-item"
-                                   aria-selected="true">@world.Name</a>
-                            }
-                            else
-                            {
-                                <a class="btn btn-outline-secondary mb-1"
-                                   id="v-pills-tab-@world.World_PK"
-                                   data-toggle="pill"
-                                   href="#v-pills-item-@world.World_PK"
-                                   role="tab"
-                                   aria-controls="v-pills-item"
-                                   aria-selected="true">@world.Name</a>
-                            }
-
-                            first = false;
-                        }
-                    }
-                </div>
-                <div class="tab-content col-10" id="v-pills-tabContent">
-                    @{
-                        first = true;
-                        foreach (var world in Model.Worlds)
-                        {
-                            if (first)
-                            {
-                                <div class="tab-pane fade show active"
-                                     id="v-pills-item-@world.World_PK"
-                                     role="tabpanel"
-                                     aria-labelledby="v-pills-tab-@world.World_PK">
-                                    <div class="card border-dark">
-                                        <div class="card-header">
-                                            <h2 class="float-left">@world.Name</h2>
-                                            @Html.ActionLink("See More", "WorldDetails", new { id = world.World_PK }, new { @class = "btn btn-primary float-right" })
-                                        </div>
-                                        <div class="card-body text-dark">
-                                            <div class="card-text text-dark">
-                                                Summary: <br>
-                                                @world.ShortDescription
-                                            </div>
-                                        </div>
-                                        <div class="list-group-flush">
-                                            @foreach (var area in world.Areas)
-                                            {
-
-                                                <a href="@Url.Action("AreaDetails", new { id = area.Area_PK })" class="list-group-item list-group-item-action">
-                                                    <h6>@area.Name: </h6>
-                                                    <small>
-                                                        @area.ShortDescription
-                                                    </small>
-                                                </a>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="tab-pane fade show"
-                                     id="v-pills-item-@world.World_PK"
-                                     role="tabpanel"
-                                     aria-labelledby="v-pills-tab-@world.World_PK">
-                                    <div class="card border-dark">
-                                        <div class="card-header">
-                                            <h2 class="float-left">@world.Name</h2>
-                                            @Html.ActionLink("See More", "WorldDetails", new { id = world.World_PK }, new { @class = "btn btn-primary float-right" })
-                                        </div>
-                                        <div class="card-body text-dark">
-                                            <div class="card-text text-dark">
-                                                Summary: <br>
-                                                @world.ShortDescription
-                                            </div>
-                                        </div>
-                                        <div class="list-group-flush">
-                                            @foreach (var area in world.Areas)
-                                            {
-
-                                                <a href="@Url.Action("AreaDetails", new { id = area.Area_PK })" class="list-group-item list-group-item-action">
-                                                    <h6>@area.Name: </h6>
-                                                    <small>
-                                                        @area.ShortDescription
-                                                    </small>
-                                                </a>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-
-                            first = false;
-                        }
-                    }
+<div class="row">
+    <div class="col-lg-6">
+        <h4 class="text-secondary">Last edited by: @Model.LastModifiedUser on @Model.LastModifiedDate.ToShortDateString()</h4>
+    </div>
+    <div class="col-lg-6">
+        @using (Html.BeginForm("AdventureSearch", "AdventureHome"))
+        {
+            <div class="input-group" id="adv-search">
+                <input type="text" 
+                       id="search"
+                       name="searchText"
+                       class="form-control col-md-8" 
+                       placeholder="Search for items"
+                       data-toggle="tooltip"
+                       data-html="true"
+                       data-placement="top"
+                       title="@ViewBag.SearchToolTip"/>
+                @Html.HiddenFor(model => model.Adventure_PK)
+                <div class="input-group-append">
+                    <button type="submit" 
+                            class="btn btn-primary">
+                    <span class="fa fa-search" aria-hidden="true"></span>
+                    </button>
                 </div>
             </div>
-        </div>
-        <div class="tab-pane fade p-3" id="nav-comments" role="tabpanel" aria-labelledby="nav-contact-tab">
-            <!--Comments-->
-            @{
-                var parentComments = Model.AdventureNotes.Where(n => n.ParentAdventureNote == null).AsEnumerable();
+            <script>
+                $(function () {
+                    $('#search').autoComplete
+                        (
+                        {
+                            minChars: 1,
+                            source: function (term, suggest) {
+                                term = term.toLowerCase();
+                                var choices = [];
+                                @foreach (var item in Model.Items.Where(i => i.IsActive))
+                                {
+                                    @: choices.push("@item.Name");
+                                }
+                                var suggestions = [];
+                                for (i = 0; i < choices.length; i++)
+                                    if (~choices[i].toLowerCase().indexOf(term))
+                                        suggestions.push(choices[i]);
 
-                foreach (var parent in parentComments)
-                {
-                    <div class="card mb-2 border border-primary">
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <p>
-                                        <strong>@parent.ApplicationUser.UserName</strong>
-                                        <small class="float-right">@parent.LastModifiedDate</small>
-                                    </p>
-                                    <div class="clearfix"></div>
-                                    <hr />
-                                    <div class="p-2">
-                                        @Html.Raw(parent.Text)
+                                suggest(suggestions);
+                            }
+                        }
+                        )
+                });
+            </script>
+        }
+    </div>
+</div>
+<hr />
+<nav>
+    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+        <a class="nav-item nav-link active"
+           id="nav-Summary-tab"
+           data-toggle="tab"
+           href="#nav-summary"
+           role="tab"
+           aria-controls="nav-home"
+           aria-selected="true">Details</a>
+        <a class="nav-item nav-link"
+           id="nav-Items-tab"
+           data-toggle="tab"
+           href="#nav-Items"
+           role="tab"
+           aria-controls="nav-home"
+           aria-selected="true">Items</a>
+        <a class="nav-item nav-link"
+           id="nav-comments-tab"
+           data-toggle="tab"
+           href="#nav-comments"
+           role="tab"
+           aria-controls="nav-home"
+           aria-selected="true">Comments</a>
+    </div>
+</nav>
+<div class="tab-content" id="nav-tabContent">
+    <div class="tab-pane fade show active p-3" id="nav-summary" role="tabpanel" aria-labelledby="nav-home-tab">
+        <!--Summary-->
+        <dl class="dl-horizontal">
+            <dt>
+                @Html.LabelFor(model => model.SystemName):
+            </dt>
+
+            <dd>
+                @Html.DisplayFor(model => model.SystemName)
+            </dd>
+
+            <dt>
+                @Html.DisplayNameFor(model => model.Description):
+            </dt>
+
+            <dd>
+                @Html.Raw(Model.Description)
+            </dd>
+
+            @if (AdventureHomeController.IsGamemaster(User.Identity, Model.Adventure_PK))
+            {
+                <dt>
+                    @Html.DisplayNameFor(model => model.GamemasterNotes):
+                </dt>
+
+                <dd>
+                    @Html.Raw(Model.GamemasterNotes)
+                </dd>
+            }
+        </dl>
+        @if (AdventureHomeController.IsGamemaster(User.Identity, Model.Adventure_PK))
+        {
+
+            @Html.ActionLink("Edit", "Edit", new { id = Model.Adventure_PK }, new { @class = "btn btn-primary" })
+        }
+    </div>
+    <div class="tab-pane fade p-3" id="nav-Items" role="tabpanel" aria-labelledby="nav-profile-tab">
+        <!--Item List-->
+        <div class="row p-3">
+            <div class="nav flex-column nav-pills col-2" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                @Html.ActionLink("Create New Item", "ItemCreate", new { adventureId = Model.Adventure_PK }, new { @class = "btn btn-primary mb-1" })
+                @{
+                    bool first = true;
+                    foreach (var Item in Model.Items.Where(w => w.ParentItem == null && w.IsActive).AsEnumerable())
+                    {
+                        <a class="btn btn-outline-secondary mb-1
+                                   @(first ? "active" : "")"
+                           id="v-pills-tab-@Item.Item_PK"
+                           data-toggle="pill"
+                           href="#v-pills-item-@Item.Item_PK"
+                           role="tab"
+                           aria-controls="v-pills-item"
+                           aria-selected="true">@Item.Name</a>
+                        first = false;
+                    }
+                }
+            </div>
+
+            <div class="tab-content col-10" id="v-pills-tabContent">
+                @{
+                    first = true;
+                    foreach (var Item in Model.Items.Where(w => w.ParentItem == null && w.IsActive).AsEnumerable())
+                    {
+                        <div class="tab-pane fade show @(first ? "active" : "")"
+                             id="v-pills-item-@Item.Item_PK"
+                             role="tabpanel"
+                             aria-labelledby="v-pills-tab-@Item.Item_PK">
+                            <div class="card border-dark">
+                                <div class="card-header">
+                                    <h2 class="float-left text-dark">@Item.Name</h2>
+                                    @Html.ActionLink("See More", "ItemDetails", new { id = Item.Item_PK }, new { @class = "btn btn-primary float-right" })
+                                </div>
+                                <div class="card-body text-dark">
+                                    <div class="card-text text-dark mb-2">
+                                        Summary: <br>
+                                        @Item.ShortDescription
                                     </div>
-                                    <button class="btn btn-outline-secondary mb-1"
+                                    @if (Item.ChildItems.Count > 0)
+                                    {
+                                        <button class="btn btn-outline-secondary mb-2"
+                                                data-toggle="collapse"
+                                                href="#Item-@Item.Item_PK"
+                                                aria-expanded="true"
+                                                aria-controls="Item-@Item.Item_PK"
+                                                role="button">
+                                            Sub-Items <i class="fa" aria-hidden="true"></i>
+                                        </button>
+                                    }
+                                    @Html.ActionLink("Create New Sub-Item", "ItemCreate",
+                                                     new { adventureId = Model.Adventure_PK, parentId = Item.Item_PK },
+                                                     new { @class = "btn btn-outline-primary mb-2" })
+                                    @ShowItemTree(Item)
+                                </div>
+
+                                @helper ShowItemTree(Item parent)
+                                {
+                                    <div class="collapse show" id="Item-@parent.Item_PK">
+                                        @foreach (var child in parent.ChildItems)
+                                        {
+                                            <div class="card card-inner border-secondary">
+                                                <div class="card-header">
+                                                    <h4 class="float-left text-dark">@child.Name</h4>
+                                                    @Html.ActionLink("See More", "ItemDetails", new { id = child.Item_PK }, new { @class = "btn btn-secondary float-right" })
+                                                </div>
+                                                <div class="card-body text-secondary">
+                                                    <div class="card-text text-secondary mb-2">
+                                                        Summary: <br />
+                                                        @child.ShortDescription
+                                                    </div>
+                                                    @if (child.ChildItems.Count > 0)
+                                                    {
+                                                        <button class="btn btn-outline-secondary mb-2"
+                                                                data-toggle="collapse"
+                                                                href="#Item-@child.Item_PK"
+                                                                aria-expanded="true"
+                                                                aria-controls="Item-@child.Item_PK"
+                                                                role="button">
+                                                            Sub-Items <i class="fa" aria-hidden="true"></i>
+                                                        </button>
+                                                    }
+                                                    @Html.ActionLink("Create New Sub-Item", "ItemCreate",
+                                                                     new { adventureId = parent.Adventure_PK, parentId = child.Item_PK },
+                                                                     new { @class = "btn btn-outline-primary mb-2" })
+                                                    @ShowItemTree(child)
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        first = false;
+                    }
+                }
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane fade p-3" id="nav-comments" role="tabpanel" aria-labelledby="nav-contact-tab">
+        <!--Comments-->
+        @{
+            var parentComments = Model.AdventureNotes.Where(n => n.ParentAdventureNote == null && n.IsActive).AsEnumerable();
+
+            foreach (var parent in parentComments)
+            {
+                <div class="card mb-2 border border-primary">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <p>
+                                    <strong>@parent.ApplicationUser.UserName</strong>
+                                    <small class="float-right">@parent.LastModifiedDate</small>
+                                </p>
+                                <div class="clearfix"></div>
+                                <hr />
+                                <div class="p-2">
+                                    @Html.Raw(parent.Text)
+                                </div>
+                                <hr />
+                                @if (parent.ChildNotes.Where(c => c.IsActive).ToList().Count > 0)
+                                {
+                                    <button class="btn btn-outline-secondary mb-2"
                                             data-toggle="collapse"
                                             href="#reply-@parent.AdventureNote_PK"
                                             aria-expanded="true"
@@ -199,64 +255,62 @@
                                             role="button">
                                         Replies <i class="fa" aria-hidden="true"></i>
                                     </button>
-                                    @ShowChildTree(parent)
+                                }
+                                @ShowChildTree(parent)
+                            </div>
+                        </div>
+
+
+                        @helper ShowChildTree(AdventureNote parentNote)
+                        {
+                            <!--Reply Section-->
+                            <button type="button" class="btn btn-outline-primary mb-2" data-toggle="modal" data-target="#newReplyModal-@parentNote.AdventureNote_PK">Reply</button>
+                            <div class="modal fade" id="newReplyModal-@parentNote.AdventureNote_PK" tabindex="-1" role="dialog" aria-labelledby="newReplyModal-@parentNote.Adventure_PK-Label">
+                                <div class="modal-dialog" role="document">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="newReplyModal-@parentNote.AdventureNote_PK-Label">New Reply</h5>
+                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            @using (Html.BeginForm("CreateComment", "AdventureHome"))
+                                            {
+                                                <textarea rows="5"
+                                                          id="NewReply-@parentNote.AdventureNote_PK"
+                                                          name="newComment"></textarea>
+                                                <script>CKEDITOR.replace('NewReply-@parentNote.AdventureNote_PK')</script>
+                                                @Html.HiddenFor(model => model.Adventure_PK)
+                                                @Html.Hidden("parentComment", parentNote.AdventureNote_PK)
+
+                                                <input type="submit" value="Post Reply" class="btn btn-primary ml-2 mt-2 float-right" />
+                                            }
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-
-
-                            @helper ShowChildTree(AdventureNote parentNote)
-                            {
-                                <button class="btn btn-outline-primary ml-1 mt-2 mb-3"
-                                        data-toggle="collapse"
-                                        href="#newReplyHide-@parentNote.AdventureNote_PK"
-                                        aria-expanded="true"
-                                        aria-controls="newReplyHide-@parentNote.AdventureNote_PK"
-                                        role="button">
-                                    New Reply <i class="fa" aria-hidden="true"></i>
-                                </button>
-                                <!--Reply Section-->
-                                <div class="collapse" id="newReplyHide-@parentNote.AdventureNote_PK">
+                            <!-- Child Comments -->
+                            <div class="collapse show" id="reply-@parentNote.AdventureNote_PK">
+                                @foreach (var child in parentNote.ChildNotes.Where(c => c.IsActive).AsEnumerable())
+                                {
                                     <div class="card card-inner mb-1 mt-1 border border-secondary">
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-12">
                                                     <p>
-
-                                                        @using (Html.BeginForm("CreateComment", "AdventureHome"))
-                                                        {
-                                                            <textarea rows="5"
-                                                                      id="NewReply-@parentNote.AdventureNote_PK"
-                                                                      name="newComment"></textarea>
-                                                            <script>CKEDITOR.replace('NewReply-@parentNote.AdventureNote_PK')</script>
-                                                            @Html.HiddenFor(model => model.Adventure_PK)
-                                                            @Html.Hidden("parentComment", parentNote.AdventureNote_PK)
-
-                                                            <input type="submit" value="Post Reply" class="btn btn-primary ml-2 mt-2 float-right" />
-                                                        }
+                                                        <strong>@child.ApplicationUser.UserName</strong>
+                                                        <small class="float-right">@child.LastModifiedDate</small>
                                                     </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Child Comments -->
-                                <div class="collapse show" id="reply-@parentNote.AdventureNote_PK">
-                                    @foreach (var child in parentNote.ChildNotes)
-                                    {
-                                        <div class="card card-inner mb-1 mt-1 border border-secondary">
-                                            <div class="card-body">
-                                                <div class="row">
-                                                    <div class="col-md-12">
-                                                        <p>
-                                                            <strong>@child.ApplicationUser.UserName</strong>
-                                                            <small class="float-right">@child.LastModifiedDate</small>
-                                                        </p>
-                                                        <div class="clearfix"></div>
-                                                        <hr />
-                                                        <div class="p-2">
-                                                            @Html.Raw(child.Text)
-                                                        </div>
-                                                        <button class="btn btn-outline-secondary mb-1"
+                                                    <div class="clearfix"></div>
+                                                    <hr />
+                                                    <div class="p-2">
+                                                        @Html.Raw(child.Text)
+                                                    </div>
+                                                    <hr />
+                                                    @if (child.ChildNotes.Count > 0)
+                                                    {
+                                                        <button class="btn btn-outline-secondary mb-2"
                                                                 data-toggle="collapse"
                                                                 href="#reply-@child.AdventureNote_PK"
                                                                 aria-expanded="true"
@@ -264,95 +318,49 @@
                                                                 role="button">
                                                             Replies <i class="fa" aria-hidden="true"></i>
                                                         </button>
-                                                        @ShowChildTree(child)
-                                                    </div>
+                                                    }
+                                                    @ShowChildTree(child)
                                                 </div>
                                             </div>
                                         </div>
-                                    }
-                                </div>
-                            }
-
-                            @*
-        <div class="collapse show" id="reply-@parent.AdventureNote_PK">
-            <!--Reply Section-->
-            <div class="card card-inner mb-1 mt-1 border border-secondary">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <p>
-                                @using (Html.BeginForm("CreateComment", "AdventureHome"))
-                                {
-                                    <div class="border border-light">
-                                        <textarea rows="5"
-                                                  id="NewReply-@parent.ParentAdventureNote_PK"
-                                                  name="newComment"></textarea>
-                                        <script>CKEDITOR.replace('NewReply-@parent.ParentAdventureNote_PK')</script>
                                     </div>
-                                    @Html.HiddenFor(model => model.Adventure_PK);
-                                    @Html.Hidden("parentComment", parent.AdventureNote_PK);
-
-                                    <input type="submit" value="Post Reply" class="btn btn-outline-primary ml-2 mt-2 float-right" />
                                 }
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Child Comments -->
-            @foreach (var child in parent.ChildNotes)
-            {
-                <div class="card card-inner mb-1 mt-1 border border-secondary">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-12">
-                                <p>
-                                    <strong>@child.ApplicationUser.UserName</strong>
-                                    <small class="float-right">@child.LastModifiedDate</small>
-                                </p>
-                                <div class="clearfix"></div>
-                                <hr />
-                                <div class="p-2">
-                                    @Html.Raw(child.Text)
-                                </div>
                             </div>
-                        </div>
+                        }
                     </div>
                 </div>
             }
-        </div>*@
-                        </div>
+        }
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newCommentModal">New Comment</button>
+        <div class="modal fade" id="newCommentModal" tabindex="-1" role="dialog" aria-labelledby="newCommentModalLabel">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="newCommentModalLabel">New Comment</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
-                }
-            }
-            <div class="card border border-primary">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <p>
-                                @using (Html.BeginForm("CreateComment", "AdventureHome"))
-                                {
-                                    <div>
-                                        <textarea rows="5"
-                                                  id="NewComment"
-                                                  name="newComment"></textarea>
-                                        <script>CKEDITOR.replace('NewComment')</script>
-                                    </div>
-                                    @Html.HiddenFor(model => model.Adventure_PK);
+                    <div class="modal-body">
+                        @using (Html.BeginForm("CreateComment", "AdventureHome"))
+                        {
+                            <div>
+                                <textarea rows="5"
+                                          id="NewComment"
+                                          name="newComment"></textarea>
+                                <script>CKEDITOR.replace('NewComment')</script>
+                            </div>
+                            @Html.HiddenFor(model => model.Adventure_PK);
 
-                                    <input type="submit" value="Post Comment" class="btn btn-primary ml-2 mt-2 float-right" />
-                                }
-                            </p>
-                        </div>
+                            <input type="submit" value="Post Comment" class="btn btn-primary ml-2 mt-2 float-right" />
+                        }
                     </div>
-
                 </div>
             </div>
         </div>
     </div>
-    <hr />
 </div>
+<hr />
 <p>
     @Html.RouteLink("Back to Adventure List", "adventurehome", null, new { @class = "btn btn-secondary" })
 </p>

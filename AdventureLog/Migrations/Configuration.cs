@@ -29,7 +29,10 @@ namespace AdventureLog.Migrations
             {
                 var store = new RoleStore<IdentityRole>(context);
                 var manager = new RoleManager<IdentityRole>(store);
-                var role = new IdentityRole { Name = "Admin" };
+                var role = new IdentityRole
+                {
+                    Name = "Admin"
+                };
 
                 manager.Create(role);
 
@@ -50,7 +53,9 @@ namespace AdventureLog.Migrations
                 var user = new ApplicationUser
                 {
                     UserName = "AdventureLogAdmin",
-                    Email = "adventurequestlog@gmail.com"
+                    Email = "adventurequestlog@gmail.com",
+                    LastLogin = DateTime.Now,
+                    JoinDate = DateTime.Now
                 };
 
                 manager.Create(user, "Test123456!");
