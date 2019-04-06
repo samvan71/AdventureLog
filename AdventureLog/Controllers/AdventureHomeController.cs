@@ -106,7 +106,7 @@ namespace AdventureLog.Controllers
                     dbContext.SaveChanges();
                 }
 
-                return RedirectToAction("Index");
+                return View("Index");
             }
 
             // If we got this far, something failed, redisplay form
@@ -127,7 +127,7 @@ namespace AdventureLog.Controllers
         public ActionResult Details(long id)
         {
             Adventure adventure = null;
-            ActionResult view = RedirectToAction("Index");
+            ActionResult view = View("AccessInvalid");
 
             using (var dbContext = new ApplicationDbContext())
             {
@@ -168,7 +168,7 @@ namespace AdventureLog.Controllers
         public ActionResult Edit(long id)
         {
             Adventure adventure = null;
-            ActionResult view = RedirectToAction("Index");
+            ActionResult view = View("AccessInvalid");
 
             using (var dbContext = new ApplicationDbContext())
             {
@@ -278,14 +278,8 @@ namespace AdventureLog.Controllers
                     {
                         var player = adventure.Players.Where(p => p.UserId_PK == userId).FirstOrDefault();
 
-                        // If the player is disabled or already exists. Update that record.
-                        if (player != null)
-                        {
-                            player.IsActive = true;
-
-                            dbContext.Entry(player).State = EntityState.Modified;
-                        }
-                        else
+                        // Add the player if they do not exist.
+                        if (player == null)
                         {
                             // Add the user as a new player.
                             var newPlayer = new Player()
@@ -299,15 +293,15 @@ namespace AdventureLog.Controllers
                             newPlayer.IsActive = !adventure.IsSecured;
 
                             dbContext.Players.Add(newPlayer);
+                            dbContext.SaveChanges();
                         }
 
-                        dbContext.SaveChanges();
-
-                        if (!adventure.IsSecured)
+                        if (!adventure.IsSecured || player.IsActive)
                         {
                             // Redirect to the details page of the newly joined adventure.
                             result = RedirectToAction("Details", id);
                         }
+                        else
                         {
                             // Redirect to the success page.
                             result = View("InviteSuccess");
@@ -367,7 +361,7 @@ namespace AdventureLog.Controllers
         [Authorize, HttpPost]
         public ActionResult DeleteAdventure(long adventure_PK)
         {
-            ActionResult result = RedirectToAction("Details", new { id = adventure_PK });
+            ActionResult result = RedirectToAction("Index");
 
             using (var dbContext = new ApplicationDbContext())
             {
@@ -562,7 +556,7 @@ namespace AdventureLog.Controllers
         public ActionResult ItemDetails(long id)
         {
             Item Item = null;
-            ActionResult result = RedirectToAction("Index");
+            ActionResult result = View("AccessInvalid");
 
             using (var dbContext = new ApplicationDbContext())
             {

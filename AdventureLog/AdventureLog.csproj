@@ -454,6 +454,7 @@
     <Content Include="Views\AdventureHome\ItemEdit.cshtml" />
     <Content Include="Views\AdventureHome\SearchResults.cshtml" />
     <Content Include="Views\AdventureHome\InviteSuccess.cshtml" />
+    <Content Include="Views\AdventureHome\AccessInvalid.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
