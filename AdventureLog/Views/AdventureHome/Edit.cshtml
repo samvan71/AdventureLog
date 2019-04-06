@@ -56,39 +56,136 @@
         </div>
     </div>
 
-    <div class="form-group">
-        @Html.LabelFor(model => model.IsPublic, htmlAttributes: new { @class = "control-label col-md-6" })
-        <div class="col-md-10">
-            @Html.CheckBoxFor(model => model.IsPublic, new { htmlAttributes = new { @class = "form-control" } })
-            @Html.ValidationMessageFor(model => model.IsPublic, "", new { @class = "text-danger" })
-        </div>
-    </div>
 
-    <div class="form-group">
-        @Html.LabelFor(model => model.IsSecured, htmlAttributes: new { @class = "control-label col-md-6" })
-        <div class="col-md-10">
-            @Html.CheckBoxFor(model => model.IsSecured, new { htmlAttributes = new { @class = "form-control" } })
-            @Html.ValidationMessageFor(model => model.IsSecured, "", new { @class = "text-danger" })
-        </div>
-    </div>
 
     <hr />
     <h4>Manage Players</h4>
 
-    <div class="form-group">
-        @Html.LabelFor(model => model.InvitePassword, htmlAttributes: new { @class = "control-label col-md-2" })
-        <div class="col-md-10">
-            @Html.EditorFor(model => model.InvitePassword, new { htmlAttributes = new { @class = "form-control" } })
-            @Html.ValidationMessageFor(model => model.InvitePassword, "", new { @class = "text-danger" })
+    <script>
+        $(document).ready(function () {
+            var selection = "private";
+            if ("@Model.IsPublic"== "True")
+                selection = "public";
+            if ("@Model.IsSecured" == "True")
+                selection = "secure";
+            $("input:radio[name='securitySettings'][value='" + selection + "']").prop('checked', true);
+            $("#" + selection).addClass("active");
+        });
+    </script>
+    <div class="row pl-3 form-group">
+        <p class="col-md-12">General Security Settings:</p>
+
+        <div id="tab" class="btn-group-vertical col-md-4" data-toggle="buttons">
+            <a href="#public" class="btn btn-secondary" data-toggle="tab">
+                <input class="form-check-input"
+                       type="radio"
+                       name="securitySettings"
+                       id="publicRadio"
+                       value="public"
+                       checked />
+                Public
+            </a>
+            <a href="#private" class="btn btn-secondary" data-toggle="tab">
+                <input class="form-check-input"
+                       type="radio"
+                       name="securitySettings"
+                       id="privateRadio"
+                       value="private" />
+                Private
+            </a>
+            <a href="#secure" class="btn btn-secondary" data-toggle="tab">
+                <input class="form-check-input"
+                       type="radio"
+                       name="securitySettings"
+                       id="secureRadio"
+                       value="secure" />
+                Secure
+            </a>
+        </div>
+
+        <div class="tab-content col-md-8">
+            <div class="tab-pane card" id="public">
+                <h6 class="card card-header">Public:</h6>
+                <div class="card card-body">
+                    Can View: Anyone<br />
+                    Can Comment: Invited Players Only<br />
+                    Can Edit/Delete: Gamemaster Only<br />
+                </div>
+            </div>
+            <div class="tab-pane card" id="private">
+                <h6 class="card card-header">Private:</h6>
+                <div class="card card-body">
+                    Can View: Anyone with Invite Link<br />
+                    Can Comment: Invited Players Only<br />
+                    Can Edit/Delete: Gamemaster Only<br />
+                </div>
+            </div>
+            <div class="tab-pane card" id="secure">
+                <h6 class="card card-header">Secured:</h6>
+                <div class="card card-body">
+                    Can View: Invited and Approved Players only<br />
+                    Can Comment: Invited and Approved Players only<br />
+                    Can Edit/Delete: Gamemaster Only<br />
+                </div>
+            </div>
         </div>
     </div>
 
+
+    <script type="text/javascript">
+        $("#publicRadio, #privateRadio, #secureRadio").change(function () {
+            if (this.value == 'public') {
+                $("#IsPublic").prop('checked', true);
+                $("#IsSecured").prop('checked', false);
+            }
+            else if (this.value == 'secure') {
+                $("#IsPublic").prop('checked', false);
+                $("#IsSecured").prop('checked', true);
+            }
+            else if (this.value == 'private') {
+                $("#IsPublic").prop('checked', false);
+                $("#IsSecured").prop('checked', false);
+            }
+        });
+    </script>
+
+    @Html.HiddenFor(model => model.IsPublic, new { htmlAttributes = new { @class = "form-control" } })
+    @Html.HiddenFor(model => model.IsSecured, new { htmlAttributes = new { @class = "form-control" } })
+
     <div class="form-group">
-        <div class="control-label pl-3">
-            Password Link:
-            <a href="@String.Format("{0}Invite/{1}", Request.Url.AbsoluteUri.Substring(0, Request.Url.AbsoluteUri.Length - 4), Model.InvitePassword)">
-                @String.Format("{0}Invite/{1}", Request.Url.AbsoluteUri.Substring(0, Request.Url.AbsoluteUri.Length - 4), Model.InvitePassword)
-            </a>
+        @Html.LabelFor(model => model.InvitePassword, htmlAttributes: new { @class = "control-label col-md-4" })
+        <div class="col-md-8 input-group">
+            @Html.EditorFor(model => model.InvitePassword, new { htmlAttributes = new { @class = "form-control" } })
+            <div class="input-group-append">
+                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#password-link-modal">
+                    Get Invite Link
+                </button>
+            </div>
+
+            <!-- Modal -->
+            <div class="modal fade" id="password-link-modal" tabindex="-1" role="dialog" aria-labelledby="password-link-modal-label" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="password-link-modal-label">
+                                Invite Link:
+                            </h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <a href="@String.Format("{0}Invite/{1}", Request.Url.AbsoluteUri.Substring(0, Request.Url.AbsoluteUri.Length - 4), Model.InvitePassword)">
+                                @String.Format("{0}Invite/{1}", Request.Url.AbsoluteUri.Substring(0, Request.Url.AbsoluteUri.Length - 4), Model.InvitePassword)
+                            </a>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @Html.ValidationMessageFor(model => model.InvitePassword, "", new { @class = "text-danger" })
         </div>
     </div>
 
