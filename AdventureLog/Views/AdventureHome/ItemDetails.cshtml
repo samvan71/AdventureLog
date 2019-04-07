@@ -72,7 +72,10 @@
     <div class="tab-pane fade p-3" id="nav-areas" role="tabpanel" aria-labelledby="nav-profile-tab">
         <div class="row p-3">
             <div class="nav flex-column nav-pills col-2" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                @Html.ActionLink("Create Sub-Item", "ItemCreate", new { adventureId = Model.Adventure_PK, parentId = Model.Item_PK }, new { @class = "btn btn-primary mb-1" })
+                @if (AdventureHomeController.IsInRole(User.Identity, Model.Adventure_PK, PlayerRole.PlayerRoleKey.Gamemaster))
+                {
+                    @Html.ActionLink("Create Sub-Item", "ItemCreate", new { adventureId = Model.Adventure_PK, parentId = Model.Item_PK }, new { @class = "btn btn-primary mb-1" })
+                }
                 @{
                     bool first = true;
                     foreach (var child in Model.ChildItems.Where(w => w.ParentItem_PK == Model.Item_PK).AsEnumerable())
@@ -134,24 +137,53 @@
     
     @if (AdventureHomeController.IsInAnyRole(User.Identity, Model.Adventure_PK, ViewPermissionList))
     {
-        <div class="tab-pane fade p-3" id="nav-comments" role="tabpanel" aria-labelledby="nav-contact-tab">
+    <div class="tab-pane fade p-3" id="nav-comments" role="tabpanel" aria-labelledby="nav-contact-tab">
         <!--Comments-->
+        <button type="button" class="btn btn-primary mb-2" data-toggle="collapse" data-target="#newCommentCollapse">New Comment</button>
+        <div class="collapse" id="newCommentCollapse">
+            <div class="card mb-2 border border-primary">
+                <div class="card-header">
+                    <strong>New Comment</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="p-0">
+                                @using (Html.BeginForm("CreateItemComment", "AdventureHome"))
+                                {
+                                    <textarea rows="5"
+                                              id="NewComment"
+                                              name="newComment"></textarea>
+                                    <script>CKEDITOR.replace('NewComment', { customConfig: '/Scripts/ckeditor_config.js' })</script>
+                                    @Html.HiddenFor(model => model.Item_PK);
+
+                                    <input type="submit" value="Post Comment" class="btn btn-primary ml-2 mt-2 float-right" />
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         @{
             var parentComments = Model.ItemNotes.Where(n => n.ParentItemNote == null).AsEnumerable();
 
             foreach (var parent in parentComments)
             {
                 <div class="card mb-2 border border-primary">
-                    <div class="card-body">
+                    <div class="card-header">
+                        <button class="btn btn-outline-primary mr-1"
+                                data-toggle="collapse"
+                                data-target="#card-body-@parent.ItemNote_PK">
+                            <i class="fa fa-chevron-down" aria-hidden="true"></i>
+                        </button>
+                        <strong>@parent.ApplicationUser.UserName</strong>
+                        <small class="float-right">@parent.LastModifiedDate</small>
+                    </div>
+                    <div class="card-body collapse show" id="card-body-@parent.ItemNote_PK">
                         <div class="row">
                             <div class="col-md-12">
-                                <p>
-                                    <strong>@parent.ApplicationUser.UserName</strong>
-                                    <small class="float-right">@parent.LastModifiedDate</small>
-                                </p>
-                                <div class="clearfix"></div>
-                                <hr />
-                                <div class="p-2">
+                                <div class="p-0">
                                     @Html.Raw(parent.Text)
                                 </div>
                                 <hr />
@@ -174,28 +206,29 @@
                         @helper ShowChildTree(ItemNote parentNote)
                         {
                             <!--Reply Section-->
-                            <button type="button" class="btn btn-outline-primary mb-2" data-toggle="modal" data-target="#newReplyModal-@parentNote.ItemNote_PK">Reply</button>
-                            <div class="modal fade" id="newReplyModal-@parentNote.ItemNote_PK" tabindex="-1" role="dialog" aria-labelledby="newReplyModal-@parentNote.Item_PK-Label">
-                                <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="newReplyModal-@parentNote.ItemNote_PK-Label">New Reply</h5>
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">&times;</span>
-                                            </button>
-                                        </div>
-                                        <div class="modal-body">
-                                            @using (Html.BeginForm("CreateItemComment", "AdventureHome"))
-                                            {
-                                                <textarea rows="5"
-                                                          id="NewReply-@parentNote.ItemNote_PK"
-                                                          name="newComment"></textarea>
-                                                <script>CKEDITOR.replace('NewReply-@parentNote.ItemNote_PK')</script>
-                                                @Html.HiddenFor(model => model.Item_PK)
-                                                @Html.Hidden("parentComment", parentNote.ItemNote_PK)
+                            <button type="button" class="btn btn-outline-primary mb-2" data-toggle="collapse" data-target="#newReplyCollapse-@parentNote.ItemNote_PK">Reply</button>
+                            <div class="collapse" id="newReplyCollapse-@parentNote.ItemNote_PK">
+                                <div class="card card-inner mb-1 mt-1 border border-secondary">
+                                    <div class="card-header">
+                                        <strong>New Reply</strong>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-12">
+                                                <div class="p-0">
+                                                    @using (Html.BeginForm("CreateItemComment", "AdventureHome"))
+                                                    {
+                                                        <textarea rows="5"
+                                                                  id="NewReply-@parentNote.ItemNote_PK"
+                                                                  name="newComment"></textarea>
+                                                        <script>CKEDITOR.replace('NewReply-@parentNote.ItemNote_PK', { customConfig: '/Scripts/ckeditor_config.js' })</script>
+                                                        @Html.HiddenFor(model => model.Item_PK)
+                                                        @Html.Hidden("parentComment", parentNote.ItemNote_PK)
 
-                                                <input type="submit" value="Post Reply" class="btn btn-primary ml-2 mt-2 float-right" />
-                                            }
+                                                        <input type="submit" value="Post Reply" class="btn btn-primary ml-2 mt-2 float-right" />
+                                                    }
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -205,16 +238,19 @@
                                 @foreach (var child in parentNote.ChildNotes)
                                 {
                                     <div class="card card-inner mb-1 mt-1 border border-secondary">
-                                        <div class="card-body">
+                                        <div class="card-header">
+                                            <button class="btn btn-outline-secondary mr-1"
+                                                    data-toggle="collapse"
+                                                    data-target="#card-body-@child.ItemNote_PK">
+                                                <i class="fa fa-chevron-down" aria-hidden="true"></i>
+                                            </button>
+                                            <strong>@child.ApplicationUser.UserName</strong>
+                                            <small class="float-right">@child.LastModifiedDate</small>
+                                        </div>
+                                        <div class="card-body collapse show" id="card-body-@child.ItemNote_PK">
                                             <div class="row">
                                                 <div class="col-md-12">
-                                                    <p>
-                                                        <strong>@child.ApplicationUser.UserName</strong>
-                                                        <small class="float-right">@child.LastModifiedDate</small>
-                                                    </p>
-                                                    <div class="clearfix"></div>
-                                                    <hr />
-                                                    <div class="p-2">
+                                                    <div class="p-0">
                                                         @Html.Raw(child.Text)
                                                     </div>
                                                     @if (child.ChildNotes.Count > 0)
@@ -240,33 +276,6 @@
                 </div>
             }
         }
-        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newCommentModal">New Comment</button>
-        <div class="modal fade" id="newCommentModal" tabindex="-1" role="dialog" aria-labelledby="newCommentModalLabel">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="newCommentModalLabel">New Comment</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        @using (Html.BeginForm("CreateItemComment", "AdventureHome"))
-                        {
-                            <div>
-                                <textarea rows="5"
-                                          id="NewComment"
-                                          name="newComment"></textarea>
-                                <script>CKEDITOR.replace('NewComment')</script>
-                            </div>
-                            @Html.HiddenFor(model => model.Item_PK);
-
-                            <input type="submit" value="Post Comment" class="btn btn-primary ml-2 mt-2 float-right" />
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
     }
 </div>

@@ -13,6 +13,7 @@ namespace AdventureLog.Migrations
         public Configuration()
         {
             AutomaticMigrationsEnabled = true;
+            AutomaticMigrationDataLossAllowed = true;
         }
 
         protected override void Seed(AdventureLog.Models.ApplicationDbContext context)

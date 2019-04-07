@@ -43,11 +43,11 @@ namespace AdventureLog.Controllers
                 {
                     var currentUserId = User.Identity.GetUserId();
 
-                    var adventures = (from p in dbContext.Players
-                                      where p.UserId_PK == currentUserId
-                                        && p.IsActive
-                                        && p.Adventure.IsActive
-                                      select p.Adventure).AsEnumerable();
+                    var adventures = (from a in dbContext.Adventures
+                                      let player = a.Players.FirstOrDefault(p => p.UserId_PK == currentUserId)
+                                      where player.IsActive
+                                         && a.IsActive
+                                      select a).AsEnumerable();
 
                     model.Adventures = adventures.ToList();
                 }
@@ -106,7 +106,7 @@ namespace AdventureLog.Controllers
                     dbContext.SaveChanges();
                 }
 
-                return View("Index");
+                return RedirectToAction("Index");
             }
 
             // If we got this far, something failed, redisplay form
@@ -479,7 +479,7 @@ namespace AdventureLog.Controllers
         public ActionResult ItemCreate(long adventureId, long? parentId)
         {
             Adventure adventure = null;
-            ActionResult result = RedirectToAction("Details", adventureId);
+            ActionResult result = View("AccessInvalid");
 
             using (var dbContext = new ApplicationDbContext())
             {

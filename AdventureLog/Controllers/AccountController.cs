@@ -76,7 +76,7 @@ namespace AdventureLog.Controllers
             var user = UserManager.FindByEmailAsync(model.Email);
             SignInStatus result = SignInStatus.Failure;
 
-            if (user != null)
+            if (user.Result != null)
             {
                 // This doesn't count login failures towards account lockout
                 // To enable password failures to trigger account lockout, change to shouldLockout: true
