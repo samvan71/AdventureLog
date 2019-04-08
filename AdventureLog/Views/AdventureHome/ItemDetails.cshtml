@@ -166,7 +166,7 @@
             </div>
         </div>
         @{
-            var parentComments = Model.ItemNotes.Where(n => n.ParentItemNote == null).AsEnumerable();
+            var parentComments = Model.ItemNotes.Where(n => n.ParentItemNote == null && n.IsActive).AsEnumerable();
 
             foreach (var parent in parentComments)
             {
@@ -183,19 +183,31 @@
                     <div class="card-body collapse show" id="card-body-@parent.ItemNote_PK">
                         <div class="row">
                             <div class="col-md-12">
-                                <div class="p-0">
-                                    @Html.Raw(parent.Text)
+                                <div class="accordion p-0" id="commentCard-@parent.ItemNote_PK">
+                                    <div id="text-@parent.ItemNote_PK" class="collapse show" data-parent="#commentCard-@parent.ItemNote_PK">
+                                        @Html.Raw(parent.Text)
+                                    </div>
+                                    @if (AdventureHomeController.IsItemNoteOwner(User.Identity, parent.ItemNote_PK))
+                                    {
+                                        <div id="text-@parent.ItemNote_PK" class="collapse" data-parent="#commentCard-@parent.ItemNote_PK">
+
+                                            @using (Html.BeginForm("EditItemComment", "AdventureHome"))
+                                            {
+                                                @Html.TextArea("commentText", parent.Text, new { @id = "comment-text-" + parent.ItemNote_PK })
+                                                @Html.Hidden("ItemNote_PK", parent.ItemNote_PK)
+                                                <input type="submit" value="Submit" class="btn btn-primary m-2" />
+                                                <script>CKEDITOR.replace('comment-text-@parent.ItemNote_PK', { customConfig: '/Scripts/ckeditor_config.js' })</script>
+                                            }
+                                        </div>
+                                    }
                                 </div>
                                 <hr />
-                                @if (parent.ChildNotes.Count > 0)
+                                @if (AdventureHomeController.IsItemNoteOwner(User.Identity, parent.ItemNote_PK))
                                 {
-                                    <button class="btn btn-outline-secondary mb-2"
+                                    <button class="btn btn-outline-warning mb-2"
                                             data-toggle="collapse"
-                                            href="#reply-@parent.ItemNote_PK"
-                                            aria-expanded="true"
-                                            aria-controls="reply-@parent.ItemNote_PK"
-                                            role="button">
-                                        Replies <i class="fa" aria-hidden="true"></i>
+                                            data-target="#text-@parent.ItemNote_PK">
+                                        Edit
                                     </button>
                                 }
                                 @ShowChildTree(parent)
@@ -233,9 +245,32 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Delete Comment -->
+                            if (AdventureHomeController.IsInRole(User.Identity, Model.Adventure_PK, PlayerRole.PlayerRoleKey.Gamemaster))
+                            {
+                                <div class="float-right">
+                                    <button class="btn btn-danger mb-2"
+                                            data-toggle="collapse"
+                                            href="#deleteCollapse-@parentNote.ItemNote_PK"
+                                            aria-expanded="true"
+                                            aria-controls="deleteCollapse-@parentNote.ItemNote_PK"
+                                            role="button">
+                                        Delete
+                                    </button>
+                                    <div class="collapse mr-4 mb-2 float-left" id="deleteCollapse-@parentNote.ItemNote_PK">
+                                        @using (Html.BeginForm("DeleteItemComment", "AdventureHome"))
+                                        {
+                                            <input hidden name="ItemNote_PK" value="@parentNote.ItemNote_PK" />
+                                            <input type="submit" value="Confirm Delete" class="btn btn-outline-danger" />
+                                        }
+                                    </div>
+                                </div>
+                            }
+
                             <!-- Child Comments -->
                             <div class="collapse show" id="reply-@parentNote.ItemNote_PK">
-                                @foreach (var child in parentNote.ChildNotes)
+                                @foreach (var child in parentNote.ChildNotes.Where(child => child.IsActive))
                                 {
                                     <div class="card card-inner mb-1 mt-1 border border-secondary">
                                         <div class="card-header">
@@ -250,18 +285,31 @@
                                         <div class="card-body collapse show" id="card-body-@child.ItemNote_PK">
                                             <div class="row">
                                                 <div class="col-md-12">
-                                                    <div class="p-0">
-                                                        @Html.Raw(child.Text)
+                                                    <div class="accordion p-0" id="commentCard-@child.ItemNote_PK">
+                                                        <div id="text-@child.ItemNote_PK" class="collapse show" data-parent="#commentCard-@child.ItemNote_PK">
+                                                            @Html.Raw(child.Text)
+                                                        </div>
+                                                        @if (AdventureHomeController.IsItemNoteOwner(User.Identity, child.ItemNote_PK))
+                                                        {
+                                                            <div id="text-@child.ItemNote_PK" class="collapse" data-parent="#commentCard-@child.ItemNote_PK">
+
+                                                                @using (Html.BeginForm("EditItemComment", "AdventureHome"))
+                                                                {
+                                                                    @Html.TextArea("commentText", child.Text, new { @id = "comment-text-" + child.ItemNote_PK })
+                                                                    @Html.Hidden("ItemNote_PK", child.ItemNote_PK)
+                                                                    <input type="submit" value="Submit" class="btn btn-primary m-2" />
+                                                                    <script>CKEDITOR.replace('comment-text-@child.ItemNote_PK', { customConfig: '/Scripts/ckeditor_config.js' })</script>
+                                                                }
+                                                            </div>
+                                                        }
                                                     </div>
-                                                    @if (child.ChildNotes.Count > 0)
+                                                    <hr />
+                                                    @if (AdventureHomeController.IsItemNoteOwner(User.Identity, child.ItemNote_PK))
                                                     {
-                                                        <button class="btn btn-outline-secondary mb-1"
+                                                        <button class="btn btn-outline-warning mb-2"
                                                                 data-toggle="collapse"
-                                                                href="#reply-@child.ItemNote_PK"
-                                                                aria-expanded="true"
-                                                                aria-controls="reply-@child.ItemNote_PK"
-                                                                role="button">
-                                                            Replies <i class="fa" aria-hidden="true"></i>
+                                                                data-target="#text-@child.ItemNote_PK">
+                                                            Edit
                                                         </button>
                                                     }
                                                     @ShowChildTree(child)

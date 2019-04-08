@@ -53,7 +53,10 @@ namespace AdventureLog.Controllers
                 }
 
                 // Populate View with Administration messages.
-                model.Messages.Add(new KeyValuePair<string, string>("Test", "testing messages"));
+                model.Messages.Add(new KeyValuePair<string, string>(
+                    "First Deployment on Azure", 
+                    "Adventure Log is now running on Azure!  This is a big step forward for Advnture Log."
+                    + "Our next push will be for an official product with the features we wanted to create in Adventure Log."));
             }
 
             return view;
@@ -347,13 +350,101 @@ namespace AdventureLog.Controllers
                                         && player.IsActive
                                     select a).Any();
 
-                    dbContext.AdventureNotes.Add(note);
-                    dbContext.SaveChanges();
+                    if (isPlayer)
+                    {
+                        dbContext.AdventureNotes.Add(note);
+                        dbContext.SaveChanges();
+                    }
                 }
             }
 
             return result;
         }
+
+        [Authorize, HttpPost]
+        public ActionResult DeleteComment(long AdventureNote_PK)
+        {
+            ActionResult result = RedirectToAction("Index");
+
+            using (var dbContext = new ApplicationDbContext())
+            {
+                var note = (from n in dbContext.AdventureNotes
+                            where n.AdventureNote_PK == AdventureNote_PK
+                                && n.IsActive
+                            select n).FirstOrDefault();
+                
+                if (note != null)
+                {
+                    var isGamemaster = IsInRole(User.Identity, note.Adventure_PK, PlayerRole.PlayerRoleKey.Gamemaster);
+
+                    if (isGamemaster)
+                    {
+                        DeleteOrphanAdventureNotes(note.AdventureNote_PK, dbContext);
+                        dbContext.SaveChanges();
+                        result = RedirectToAction("Details", new { id = note.Adventure_PK });
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        [Authorize, HttpPost, ValidateInput(false)]
+        public ActionResult EditComment(long AdventureNote_PK, string commentText, long? parentComment = null)
+        {
+            ActionResult result = null;
+            var userId = User.Identity.GetUserId();
+
+            using (var dbContext = new ApplicationDbContext())
+            {
+                var note = (from n in dbContext.AdventureNotes
+                            where n.AdventureNote_PK == AdventureNote_PK
+                            select n)
+                            .FirstOrDefault();
+
+                if (note != null)
+                {
+                    // Check if the adventure exists that meets the qualifications.
+                    var isPlayer = (from a in dbContext.Adventures
+                                    let player = a.Players.FirstOrDefault(p => p.UserId_PK == userId)
+                                    where a.Adventure_PK == note.Adventure_PK
+                                        && a.IsActive
+                                        && player.IsActive
+                                    select a).Any();
+
+                    if (isPlayer)
+                    {
+                        note.Text = commentText;
+
+                        dbContext.Entry(note).Property("Text").IsModified = true;
+                        dbContext.SaveChanges();
+
+                        result = RedirectToAction("Details", new { id = note.Adventure_PK});
+                    }
+                }
+            }
+
+
+            return result;
+        }
+
+        private void DeleteOrphanAdventureNotes(long AdventureNote_PK, ApplicationDbContext dbContext)
+        {
+            var note = (from n in dbContext.AdventureNotes
+                        where n.AdventureNote_PK == AdventureNote_PK
+                        select n)
+                        .Include(n => n.ChildNotes)
+                        .FirstOrDefault();
+
+            foreach (var child in note.ChildNotes)
+            {
+                DeleteOrphanAdventureNotes(child.AdventureNote_PK, dbContext);
+            }
+
+            note.IsActive = false;
+            dbContext.Entry(note).Property("IsActive").IsModified = true;
+        }
+
         #endregion
 
         #region Delete Adventure
@@ -373,12 +464,29 @@ namespace AdventureLog.Controllers
                                     && a.IsActive
                                     && player.IsActive
                                     && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
-                                 select a).FirstOrDefault();
+                                 select a)
+                                 .Include(a => a.Items)
+                                 .Include(a => a.AdventureNotes)
+                                 .FirstOrDefault();
 
-                adventure.IsActive = false;
+                if (adventure != null)
+                {
+                    adventure.IsActive = false;
 
-                dbContext.Entry(adventure).State = EntityState.Modified;
-                dbContext.SaveChanges();
+                    dbContext.Entry(adventure).Property("IsActive").IsModified = true;
+
+                    foreach (var item in adventure.Items)
+                    {
+                        DeleteOrphanItems(item.Item_PK, dbContext);
+                    }
+
+                    foreach (var note in adventure.AdventureNotes)
+                    {
+                        DeleteOrphanAdventureNotes(note.AdventureNote_PK, dbContext);
+                    }
+
+                    dbContext.SaveChanges();
+                }
             }
 
             return result;
@@ -647,7 +755,7 @@ namespace AdventureLog.Controllers
         }
         #endregion
 
-        #region Delete Adventure
+        #region Delete Item
 
         [Authorize, HttpPost]
         public ActionResult DeleteItem(long item_PK, long adventure_pk)
@@ -666,13 +774,37 @@ namespace AdventureLog.Controllers
                                 && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
                             select i).FirstOrDefault();
 
-                item.IsActive = false;
-
-                dbContext.Entry(item).State = EntityState.Modified;
-                dbContext.SaveChanges();
+                if (item != null)
+                {
+                    DeleteOrphanItems(item.Item_PK, dbContext);
+                    dbContext.SaveChanges();
+                }
             }
 
             return result;
+        }
+
+        private void DeleteOrphanItems(long Item_PK, ApplicationDbContext dbContext)
+        {
+            var item = (from i in dbContext.Items
+                        where i.Item_PK == Item_PK
+                        select i)
+                        .Include(i => i.ChildItems)
+                        .Include(i => i.ItemNotes)
+                        .FirstOrDefault();
+
+            foreach (var child in item.ChildItems)
+            {
+                DeleteOrphanItems(child.Item_PK, dbContext);
+            }
+
+            foreach (var note in item.ItemNotes)
+            {
+                DeleteOrphanComments(note.ItemNote_PK, dbContext);
+            }
+
+            item.IsActive = false;
+            dbContext.Entry(item).Property("IsActive").IsModified = true;
         }
 
         #endregion
@@ -720,6 +852,95 @@ namespace AdventureLog.Controllers
 
             return result;
         }
+
+        [Authorize, HttpPost]
+        public ActionResult DeleteItemComment(long ItemNote_PK)
+        {
+            ActionResult result = RedirectToAction("Index");
+
+            using (var dbContext = new ApplicationDbContext())
+            {
+                var note = (from n in dbContext.ItemNotes
+                            where n.ItemNote_PK == ItemNote_PK
+                                && n.IsActive
+                            select n)
+                            .Include(n => n.Item)
+                            .FirstOrDefault();
+
+                if (note != null)
+                {
+                    var isGamemaster = IsInRole(User.Identity, note.Item.Adventure_PK, PlayerRole.PlayerRoleKey.Gamemaster);
+
+                    if (isGamemaster)
+                    {
+                        DeleteOrphanComments(note.ItemNote_PK, dbContext);
+                        dbContext.SaveChanges();
+                        result = RedirectToAction("ItemDetails", new { id = note.Item_PK });
+                    }
+                }
+            }
+
+            return result;
+        }
+
+
+        [Authorize, HttpPost, ValidateInput(false)]
+        public ActionResult EditItemComment(long ItemNote_PK, string commentText, long? parentComment = null)
+        {
+            ActionResult result = null;
+            var userId = User.Identity.GetUserId();
+
+            using (var dbContext = new ApplicationDbContext())
+            {
+                var note = (from n in dbContext.ItemNotes
+                            where n.ItemNote_PK == ItemNote_PK
+                            select n)
+                            .Include(n => n.Item)
+                            .FirstOrDefault();
+
+                if (note != null)
+                {
+                    // Check if the adventure exists that meets the qualifications.
+                    var isPlayer = (from a in dbContext.Adventures
+                                    let player = a.Players.FirstOrDefault(p => p.UserId_PK == userId)
+                                    where a.Adventure_PK == note.Item.Adventure_PK
+                                        && a.IsActive
+                                        && player.IsActive
+                                    select a).Any();
+
+                    if (isPlayer)
+                    {
+                        note.Text = commentText;
+
+                        dbContext.Entry(note).Property("Text").IsModified = true;
+                        dbContext.SaveChanges();
+
+                        result = RedirectToAction("ItemDetails", new { id = note.Item_PK });
+                    }
+                }
+            }
+
+
+            return result;
+        }
+
+        private void DeleteOrphanComments(long ItemNote_PK, ApplicationDbContext dbContext)
+        {
+            var note = (from n in dbContext.ItemNotes
+                        where n.ItemNote_PK == ItemNote_PK
+                        select n)
+                        .Include(n => n.ChildNotes)
+                        .FirstOrDefault();
+
+            foreach (var child in note.ChildNotes)
+            {
+                DeleteOrphanComments(child.ItemNote_PK, dbContext);
+            }
+
+            note.IsActive = false;
+            dbContext.Entry(note).Property("IsActive").IsModified = true;
+        }
+
         #endregion
 
         #endregion
@@ -757,6 +978,38 @@ namespace AdventureLog.Controllers
             }
 
             return isInAnyRole;
+        }
+
+        public static bool IsAdventureNoteOwner(IIdentity user, long AdventureNote_PK)
+        {
+            bool isAdventureNoteOwner = true;
+            string userId = user.GetUserId();
+
+            using (var dbContext = new ApplicationDbContext())
+            {
+                isAdventureNoteOwner = (from n in dbContext.AdventureNotes
+                                        where n.AdventureNote_PK == AdventureNote_PK
+                                            && n.UserId_PK == userId
+                                        select n).Any();
+            }
+
+            return isAdventureNoteOwner;
+        }
+
+        public static bool IsItemNoteOwner(IIdentity user, long ItemNote_PK)
+        {
+            bool isAdventureNoteOwner = true;
+            string userId = user.GetUserId();
+
+            using (var dbContext = new ApplicationDbContext())
+            {
+                isAdventureNoteOwner = (from n in dbContext.ItemNotes
+                                        where n.ItemNote_PK == ItemNote_PK
+                                            && n.UserId_PK == userId
+                                        select n).Any();
+            }
+
+            return isAdventureNoteOwner;
         }
         #endregion
     }
