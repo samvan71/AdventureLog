@@ -27,18 +27,25 @@ namespace AdventureLog.Controllers
         }
 
         #region Index
-        // ~/adventure
+        /// <summary>
+        /// navigates to the ~/adventure index page.
+        /// </summary>
+        /// <returns>Index View</returns>
         [Authorize]
         [Route("adventure", Name ="adventurehome")]
         public ActionResult Index()
         {
+            // Instantiate the model.
             var model = new AdventureHomeModel();
+            // Create the view.
             var view = View(model);
 
+            // Users must be logged in.
             if (Request.IsAuthenticated)
             {
                 User.Identity.GetUserId();
 
+                // Get the users adventures.
                 using (ApplicationDbContext dbContext = new ApplicationDbContext())
                 {
                     var currentUserId = User.Identity.GetUserId();
@@ -67,12 +74,15 @@ namespace AdventureLog.Controllers
         #region Adventure Actions
 
         #region Create
-
-        // Get: Adventure/Create
+        
+        /// <summary>
+        /// HTTP Get: for the create adventure page.  Route: ~/adventure/Create
+        /// </summary>
         [Authorize]
         [Route("adventure/Create")]
         public ActionResult Create()
         {
+            // Create empty adventure with default values.
             var model = new Adventure()
             {
                 CreatedDate = DateTime.Now,
@@ -83,17 +93,25 @@ namespace AdventureLog.Controllers
 
             return View();
         }
-        
+
         // Post: AdventureHome/Create
+        /// <summary>
+        /// HTTP Post for create adventure page.
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Route("adventure/Create")]
         public ActionResult Create(Adventure model)
         {
+            // If required fields are filled out.
             if (ModelState.IsValid)
             {
+                // Activate the adventure.
                 model.IsActive = true;
 
+                // Add the user as the gamemaster of the adventure.
                 var newPlayer = new Player()
                 {
                     UserId_PK = User.Identity.GetUserId(),
@@ -102,6 +120,7 @@ namespace AdventureLog.Controllers
                     IsActive = true
                 };
 
+                // Update the database.
                 using (var dbContext = new ApplicationDbContext())
                 {
                     dbContext.Adventures.Add(model);
@@ -109,6 +128,7 @@ namespace AdventureLog.Controllers
                     dbContext.SaveChanges();
                 }
 
+                // Go to the adventure home page.
                 return RedirectToAction("Index");
             }
 
@@ -121,7 +141,7 @@ namespace AdventureLog.Controllers
         #region Details
 
         /// <summary>
-        /// Detail view of a specified Adventure
+        /// Http Get for detail view of a specified Adventure
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -130,12 +150,14 @@ namespace AdventureLog.Controllers
         public ActionResult Details(long id)
         {
             Adventure adventure = null;
+            // Display the access invalid view if the adventure could not be found or the user does not have access to view it.
             ActionResult view = View("AccessInvalid");
 
             using (var dbContext = new ApplicationDbContext())
             {
                 string userId = User.Identity.GetUserId();
 
+                // Get the adventure.
                 adventure = (from a in dbContext.Adventures
                              let player = a.Players.FirstOrDefault(p => p.UserId_PK == userId)
                              where a.Adventure_PK == id
@@ -149,8 +171,10 @@ namespace AdventureLog.Controllers
                              .FirstOrDefault();
             }
 
+            // If the adventure was found.
             if (adventure != null)
             {
+                // Display the adventure.
                 view = View("Details", adventure);
             }
 
@@ -171,16 +195,19 @@ namespace AdventureLog.Controllers
         public ActionResult Edit(long id)
         {
             Adventure adventure = null;
+            // Display the access invalid view if the adventure could not be found or the user does not have access to edit it.
             ActionResult view = View("AccessInvalid");
 
             using (var dbContext = new ApplicationDbContext())
             {
                 string userId = User.Identity.GetUserId();
 
+                // Get the adventure.
                 adventure = (from a in dbContext.Adventures
                              let player = a.Players.FirstOrDefault(p => p.UserId_PK == userId)
                              where a.Adventure_PK == id
                                 && player.IsActive
+                                // Assure the user is a gamemaster
                                 && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
                                 && a.IsActive
                              select a)
@@ -190,8 +217,10 @@ namespace AdventureLog.Controllers
                              .FirstOrDefault();
             }
 
+            // If the adventure was found.
             if (adventure != null)
             {
+                // Display the edit view.
                 view = View("Edit", adventure);
             }
             
@@ -319,15 +348,21 @@ namespace AdventureLog.Controllers
         #endregion
 
         #region Comments
+        /// <summary>
+        /// HTTP Post for creating a comment.
+        /// </summary>
         [Authorize, HttpPost, ValidateInput(false)]
         public ActionResult CreateComment(long Adventure_PK, string newComment, long? parentComment = null)
         {
+            // Return to the detail view of the adventure.
             ActionResult result = RedirectToAction("Details", new { id = Adventure_PK });
 
+            // The comment must contain something.
             if (!string.IsNullOrWhiteSpace(newComment))
             {
                 var userId = User.Identity.GetUserId();
 
+                // Create the comment.
                 var note = new AdventureNote()
                 {
                     Adventure_PK = Adventure_PK,
@@ -350,6 +385,7 @@ namespace AdventureLog.Controllers
                                         && player.IsActive
                                     select a).Any();
 
+                    // Add the comment.
                     if (isPlayer)
                     {
                         dbContext.AdventureNotes.Add(note);
@@ -361,6 +397,9 @@ namespace AdventureLog.Controllers
             return result;
         }
 
+        /// <summary>
+        /// HTTP Post for deleting a comment.
+        /// </summary>
         [Authorize, HttpPost]
         public ActionResult DeleteComment(long AdventureNote_PK)
         {
@@ -368,6 +407,7 @@ namespace AdventureLog.Controllers
 
             using (var dbContext = new ApplicationDbContext())
             {
+                // Get the comment.
                 var note = (from n in dbContext.AdventureNotes
                             where n.AdventureNote_PK == AdventureNote_PK
                                 && n.IsActive
@@ -375,10 +415,12 @@ namespace AdventureLog.Controllers
                 
                 if (note != null)
                 {
+                    // If the user is the gamemaster.
                     var isGamemaster = IsInRole(User.Identity, note.Adventure_PK, PlayerRole.PlayerRoleKey.Gamemaster);
 
                     if (isGamemaster)
                     {
+                        // Delete all replies including the deleted comment.
                         DeleteOrphanAdventureNotes(note.AdventureNote_PK, dbContext);
                         dbContext.SaveChanges();
                         result = RedirectToAction("Details", new { id = note.Adventure_PK });
@@ -389,6 +431,9 @@ namespace AdventureLog.Controllers
             return result;
         }
 
+        /// <summary>
+        /// Http Post for editing the comment.
+        /// </summary>
         [Authorize, HttpPost, ValidateInput(false)]
         public ActionResult EditComment(long AdventureNote_PK, string commentText, long? parentComment = null)
         {
@@ -397,6 +442,7 @@ namespace AdventureLog.Controllers
 
             using (var dbContext = new ApplicationDbContext())
             {
+                // Get the comment to edit.
                 var note = (from n in dbContext.AdventureNotes
                             where n.AdventureNote_PK == AdventureNote_PK
                             select n)
@@ -412,6 +458,7 @@ namespace AdventureLog.Controllers
                                         && player.IsActive
                                     select a).Any();
 
+                    // If the user is the player that posted the comment, edit it.
                     if (isPlayer)
                     {
                         note.Text = commentText;
@@ -428,6 +475,11 @@ namespace AdventureLog.Controllers
             return result;
         }
 
+        /// <summary>
+        /// Recursively deletes all items associated with an comment.
+        /// </summary>
+        /// <param name="AdventureNote_PK">Comment to delete.</param>
+        /// <param name="dbContext">database access to use.</param>
         private void DeleteOrphanAdventureNotes(long AdventureNote_PK, ApplicationDbContext dbContext)
         {
             var note = (from n in dbContext.AdventureNotes
@@ -449,6 +501,10 @@ namespace AdventureLog.Controllers
 
         #region Delete Adventure
 
+        /// <summary>
+        /// Http Post to delete an adventure.
+        /// </summary>
+        /// <param name="adventure_PK"></param>
         [Authorize, HttpPost]
         public ActionResult DeleteAdventure(long adventure_PK)
         {
@@ -458,11 +514,13 @@ namespace AdventureLog.Controllers
             {
                 var userId = User.Identity.GetUserId();
 
+                // Find the adventure.
                 var adventure = (from a in dbContext.Adventures
                                  let player = a.Players.FirstOrDefault(p => p.UserId_PK == userId)
                                  where a.Adventure_PK == adventure_PK
                                     && a.IsActive
                                     && player.IsActive
+                                    // Assure the user is the gamemaster.
                                     && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
                                  select a)
                                  .Include(a => a.Items)
@@ -471,15 +529,19 @@ namespace AdventureLog.Controllers
 
                 if (adventure != null)
                 {
+                    // disable the adventure.
                     adventure.IsActive = false;
 
+                    // update the database.
                     dbContext.Entry(adventure).Property("IsActive").IsModified = true;
 
+                    // Delete all sub-items.
                     foreach (var item in adventure.Items)
                     {
                         DeleteOrphanItems(item.Item_PK, dbContext);
                     }
 
+                    // Delete all notes associated with the adventure.
                     foreach (var note in adventure.AdventureNotes)
                     {
                         DeleteOrphanAdventureNotes(note.AdventureNote_PK, dbContext);
@@ -495,7 +557,12 @@ namespace AdventureLog.Controllers
         #endregion
 
         #region Search
-
+        /// <summary>
+        /// Http Post for searching for an item in an adventure.
+        /// </summary>
+        /// <param name="adventure_PK"></param>
+        /// <param name="searchText"></param>
+        /// <returns></returns>
         [Authorize, HttpPost]
         public ActionResult AdventureSearch(long adventure_PK, string searchText)
         {
@@ -536,6 +603,7 @@ namespace AdventureLog.Controllers
                     // Remove all items that do not match.
                     results = results.Where(i => regex.IsMatch(i.Name.ToLower())).ToList();
 
+                    // Save the list for the view in temporary data
                     TempData["searchResults"] = results;
                     result = RedirectToAction("SearchResults", new { id = adventure_PK });
                 }
@@ -544,11 +612,18 @@ namespace AdventureLog.Controllers
             return result;
         }
 
+        /// <summary>
+        /// Http Get for the search results page.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet]
         [Route("adventure/{id:long}/Search/Results")]
         public ActionResult SearchResults(long id)
         {
+            // Get the results from temporary data.
             var searchResults = TempData["searchResults"] as List<Item>;
+            // Create the view model.
             var viewModel = new SearchResultsViewModel(null, searchResults);
 
             using (var dbContext = new ApplicationDbContext())
@@ -579,7 +654,7 @@ namespace AdventureLog.Controllers
         #region Create
 
         /// <summary>
-        /// HTTP Get.  /adventure/{adventureId}/Item/Create
+        /// HTTP Get. for creating an item. Route: ~/adventure/{adventureId}/Item/Create
         /// </summary>
         /// <param name="adventureId"></param>
         [Authorize]
@@ -587,6 +662,7 @@ namespace AdventureLog.Controllers
         public ActionResult ItemCreate(long adventureId, long? parentId)
         {
             Adventure adventure = null;
+            // Display the access invalid view if the adventure could not be found or the user does not have access to view it.
             ActionResult result = View("AccessInvalid");
 
             using (var dbContext = new ApplicationDbContext())
@@ -598,12 +674,14 @@ namespace AdventureLog.Controllers
                              where a.Adventure_PK == adventureId
                                 && a.IsActive
                                 && player.IsActive
+                                // Ensure the user is a gamemaster.
                                 && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
                              select a).FirstOrDefault();
             }
 
             if (adventure != null)
             {
+                // Create the default item with preset values.
                 var model = new Item()
                 {
                     Adventure = adventure,
@@ -644,10 +722,12 @@ namespace AdventureLog.Controllers
 
                 if (model.ParentItem_PK != null)
                 {
+                    // Return to the parent.
                     result = RedirectToAction("ItemDetails", new { id = model.ParentItem_PK });
                 }
                 else
                 {
+                    // Return to the advenure view.
                     result = RedirectToAction("Details", new { id = model.Adventure_PK });
                 }
             }
@@ -659,6 +739,11 @@ namespace AdventureLog.Controllers
         #endregion
 
         #region Details
+        /// <summary>
+        /// HTTP Get for item details.  Route: ~/Item/id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [Authorize]
         [Route("Item/{id:long}", Name = "ItemDetails")]
         public ActionResult ItemDetails(long id)
@@ -695,11 +780,17 @@ namespace AdventureLog.Controllers
         #endregion
 
         #region Edit
+        /// <summary>
+        /// HTTP Get for edititng an item. Rotue: ~/item/id/Edit
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [Authorize]
         [Route("Item/{id:long}/Edit", Name="ItemEdit")]
         public ActionResult ItemEdit(long id)
         {
             Item Item = null;
+            // If there is an issue, go to the detail view of the item.
             ActionResult view = RedirectToAction("ItemDetails", id);
 
             using (var dbContext = new ApplicationDbContext())
@@ -713,6 +804,7 @@ namespace AdventureLog.Controllers
                             && i.IsActive
                             && i.Adventure.IsActive
                             && player.IsActive
+                            // Ensure the user is a gamemaster.
                             && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
                          select i).FirstOrDefault();
             }
@@ -726,9 +818,12 @@ namespace AdventureLog.Controllers
         }
 
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize]
+        /// <summary>
+        /// Http Post for editing an item.
+        /// </summary>
+        /// <param name="model"></param>
+        /// <returns></returns>
+        [HttpPost, ValidateAntiForgeryToken, Authorize]
         [Route("Item/{id:long}/Edit")]
         public ActionResult ItemEdit(Item model)
         {
@@ -756,7 +851,12 @@ namespace AdventureLog.Controllers
         #endregion
 
         #region Delete Item
-
+        /// <summary>
+        /// Http Post for deleting an item.
+        /// </summary>
+        /// <param name="item_PK"></param>
+        /// <param name="adventure_pk"></param>
+        /// <returns></returns>
         [Authorize, HttpPost]
         public ActionResult DeleteItem(long item_PK, long adventure_pk)
         {
@@ -767,15 +867,18 @@ namespace AdventureLog.Controllers
             {
                 var userId = User.Identity.GetUserId();
 
+                // Find the item.
                 var item = (from i in dbContext.Items
                             let player = i.Adventure.Players.FirstOrDefault(p => p.UserId_PK == userId)
                             where i.Item_PK == item_PK
                                 && player.IsActive
+                                // ensure the user is the gamemaster.
                                 && player.PlayerRole.PlayerRole_PK == (long)PlayerRole.PlayerRoleKey.Gamemaster
                             select i).FirstOrDefault();
 
                 if (item != null)
                 {
+                    // Delete all child items.
                     DeleteOrphanItems(item.Item_PK, dbContext);
                     dbContext.SaveChanges();
                 }
@@ -784,6 +887,11 @@ namespace AdventureLog.Controllers
             return result;
         }
 
+        /// <summary>
+        /// Recursively delete all child items of an item.
+        /// </summary>
+        /// <param name="Item_PK">item to delete.</param>
+        /// <param name="dbContext">database context to use.</param>
         private void DeleteOrphanItems(long Item_PK, ApplicationDbContext dbContext)
         {
             var item = (from i in dbContext.Items
@@ -792,17 +900,20 @@ namespace AdventureLog.Controllers
                         .Include(i => i.ChildItems)
                         .Include(i => i.ItemNotes)
                         .FirstOrDefault();
-
+            
+            // Delete childs of the children.
             foreach (var child in item.ChildItems)
             {
                 DeleteOrphanItems(child.Item_PK, dbContext);
             }
 
+            // Delete all notes on the item.
             foreach (var note in item.ItemNotes)
             {
                 DeleteOrphanComments(note.ItemNote_PK, dbContext);
             }
 
+            // Delete the item.
             item.IsActive = false;
             dbContext.Entry(item).Property("IsActive").IsModified = true;
         }
@@ -810,6 +921,13 @@ namespace AdventureLog.Controllers
         #endregion
 
         #region Comments
+        /// <summary>
+        /// Http Post for creating a comment.
+        /// </summary>
+        /// <param name="Item_PK"></param>
+        /// <param name="newComment"></param>
+        /// <param name="parentComment"></param>
+        /// <returns></returns>
         [Authorize, HttpPost, ValidateInput(false)]
         public ActionResult CreateItemComment(long Item_PK, string newComment, long? parentComment = null)
         {
@@ -853,6 +971,11 @@ namespace AdventureLog.Controllers
             return result;
         }
 
+        /// <summary>
+        /// Http Post for deleting an item.
+        /// </summary>
+        /// <param name="ItemNote_PK"></param>
+        /// <returns></returns>
         [Authorize, HttpPost]
         public ActionResult DeleteItemComment(long ItemNote_PK)
         {
@@ -869,10 +992,12 @@ namespace AdventureLog.Controllers
 
                 if (note != null)
                 {
+                    // Ensure the user is the gamemaster.
                     var isGamemaster = IsInRole(User.Identity, note.Item.Adventure_PK, PlayerRole.PlayerRoleKey.Gamemaster);
 
                     if (isGamemaster)
                     {
+                        // Delete the comment and all child comments.
                         DeleteOrphanComments(note.ItemNote_PK, dbContext);
                         dbContext.SaveChanges();
                         result = RedirectToAction("ItemDetails", new { id = note.Item_PK });
@@ -883,7 +1008,13 @@ namespace AdventureLog.Controllers
             return result;
         }
 
-
+        /// <summary>
+        /// Http Post to edit the comment.
+        /// </summary>
+        /// <param name="ItemNote_PK"></param>
+        /// <param name="commentText"></param>
+        /// <param name="parentComment"></param>
+        /// <returns></returns>
         [Authorize, HttpPost, ValidateInput(false)]
         public ActionResult EditItemComment(long ItemNote_PK, string commentText, long? parentComment = null)
         {
@@ -924,6 +1055,11 @@ namespace AdventureLog.Controllers
             return result;
         }
 
+        /// <summary>
+        /// Delete all child comments of a comment.
+        /// </summary>
+        /// <param name="ItemNote_PK"></param>
+        /// <param name="dbContext"></param>
         private void DeleteOrphanComments(long ItemNote_PK, ApplicationDbContext dbContext)
         {
             var note = (from n in dbContext.ItemNotes
@@ -946,6 +1082,13 @@ namespace AdventureLog.Controllers
         #endregion
 
         #region Utilities
+        /// <summary>
+        /// Method to ascertain if a user is in a role for a specified adventure.
+        /// </summary>
+        /// <param name="user">User Id to check for.</param>
+        /// <param name="adventure_Pk">Specified Adventure.</param>
+        /// <param name="playerRoleKey">Player Role to check for.</param>
+        /// <returns></returns>
         public static bool IsInRole(IIdentity user, long adventure_Pk, PlayerRole.PlayerRoleKey playerRoleKey)
         {
             bool isInRole = true;
@@ -964,6 +1107,13 @@ namespace AdventureLog.Controllers
             return isInRole;
         }
 
+        /// <summary>
+        /// Check if a user is in any role for a specified adventure.
+        /// </summary>
+        /// <param name="user">User Id to check for.</param>
+        /// <param name="adventure_Pk">Specified adventure.</param>
+        /// <param name="playerRoleKeys">enumerable item list of player roles to check for.</param>
+        /// <returns></returns>
         public static bool IsInAnyRole(IIdentity user, long adventure_Pk, IEnumerable<PlayerRole.PlayerRoleKey> playerRoleKeys)
         {
             bool isInAnyRole = false;
@@ -980,6 +1130,12 @@ namespace AdventureLog.Controllers
             return isInAnyRole;
         }
 
+        /// <summary>
+        /// Checks if a user is the original creator of a comment.
+        /// </summary>
+        /// <param name="user">User Id to check for.</param>
+        /// <param name="AdventureNote_PK">key of adventure comment to check for.</param>
+        /// <returns></returns>
         public static bool IsAdventureNoteOwner(IIdentity user, long AdventureNote_PK)
         {
             bool isAdventureNoteOwner = true;
@@ -996,6 +1152,12 @@ namespace AdventureLog.Controllers
             return isAdventureNoteOwner;
         }
 
+        /// <summary>
+        /// Checks if a user is the original creator of a comment.
+        /// </summary>
+        /// <param name="user">User Id to check for.</param>
+        /// <param name="ItemNote_PK">Key of adventure comment to check for.</param>
+        /// <returns></returns>
         public static bool IsItemNoteOwner(IIdentity user, long ItemNote_PK)
         {
             bool isAdventureNoteOwner = true;

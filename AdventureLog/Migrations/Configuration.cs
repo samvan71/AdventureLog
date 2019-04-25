@@ -24,6 +24,10 @@ namespace AdventureLog.Migrations
             SeedPlayerRole(context);
         }
 
+        /// <summary>
+        /// Adds Asp.Net user Roles
+        /// </summary>
+        /// <param name="context"></param>
         private void SeedRoles(ApplicationDbContext context)
         {
             if (!context.Roles.Any(r => r.Name == "Admin"))

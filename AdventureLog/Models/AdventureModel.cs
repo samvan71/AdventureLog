@@ -167,7 +167,7 @@ namespace AdventureLog.Models
     #endregion
     #region Hotspot Information
 
-    /*
+    /* Removed as the Map Feautre is being postponed for a later version.
     public class Hotspot
     {
         [Key]
